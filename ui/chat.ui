@@ -243,6 +243,19 @@
       <string>나가기</string>
      </property>
     </widget>
+    <widget class="QPushButton" name="CHAT_game">
+     <property name="geometry">
+      <rect>
+       <x>510</x>
+       <y>470</y>
+       <width>71</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>나가기</string>
+     </property>
+    </widget>
    </widget>
    <widget class="QWidget" name="page_2">
     <widget class="QTableWidget" name="CHAT_chatting">

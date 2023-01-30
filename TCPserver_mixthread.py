@@ -54,7 +54,9 @@ class UserManager:  # 유저 컨트롤용 클래스
             userList.append(name)
         print(userList)
 
-
+    def gamesignal(self, to, msg):
+        sock = self.users[to][0]
+        sock.send(msg.encode())
     def messageHandler(self, username, msg):
         if msg[1].strip() == 'E!X@I#T%':  # 클라가 특정 문자(신호) 보내면 disconnect으로 인식해서
             self.removeUser(username)  # 클라리스트에서 삭제
@@ -68,55 +70,6 @@ class UserManager:  # 유저 컨트롤용 클래스
             cl_sock.send(msg.encode())  # 각각의 사용자에게 메시지 전송
 
 
-
-class ddongrun():
-    def pygaming_test(self):
-        pygame.init()  # 2. pygame 초기화
-
-        # 3. pygame에 사용되는 전역변수 선언
-        WHITE = (255, 255, 255)
-        size = [400, 500]
-        screen = pygame.display.set_mode(size)
-
-        done1 = False
-        done2 = False
-        clock = pygame.time.Clock()
-
-        # pygame에 사용하도록 비행기 이미지를 호출
-        airplane1 = pygame.image.load('test.png')
-        airplane1 = pygame.transform.scale(airplane1, (60, 45))
-        airplane2 = pygame.image.load('test.png')
-        airplane2 = pygame.transform.scale(airplane2, (60, 45))
-
-        self.runGame(clock,screen,WHITE,done1,airplane1)
-        th_game1 = threading.Thread(target=self.runGame, args=(clock,screen,WHITE,done1,airplane1))
-        th_game2 = threading.Thread(target=self.runGame, args=(clock, screen, WHITE, done2, airplane2))
-        pygame.quit()
-
-        # 4. pygame 무한루프
-    def runGame(self,clock,screen,WHITE,done,airplane):
-        x = 20
-        y = 24
-
-        while not done:
-            clock.tick(10)
-            screen.fill(WHITE)
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    done = True
-
-                # 방향키 입력에 대한 이벤트 처리
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_UP:
-                        y -= 10
-                    elif event.key == pygame.K_DOWN:
-                        y += 10
-
-            screen.blit(airplane, (x, y))
-            pygame.display.update()
-
-
 class TCPhandler(socketserver.BaseRequestHandler):
     userManager = UserManager()  # 유저 클래스 선언
 
@@ -127,7 +80,7 @@ class TCPhandler(socketserver.BaseRequestHandler):
         try:
             msg = self.request.recv(1024)  # 접속된 사용자로부터 입력대기
             while msg:
-                print(msg.decode())  # 서버 화면에 출력
+                # print(msg.decode())  # 서버 화면에 출력
                 Cmsg = msg.decode().split('!*!:!*!')
                 print(Cmsg)
                 if Cmsg[0] == 'C':
@@ -135,7 +88,7 @@ class TCPhandler(socketserver.BaseRequestHandler):
                         self.request.close()  # disConnection
                         break  # recv 종료
                 elif Cmsg[0] == 'G':
-                    pass
+                    self.userManager.gamesignal(Cmsg[2], msg)
                 msg = self.request.recv(1024)  # 메시지 수신 대기
 
         except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.
