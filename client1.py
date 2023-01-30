@@ -2,11 +2,9 @@ import socket
 import sys
 import time
 import threading
-
 import pyautogui
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
 import pygame
 import json
 
@@ -35,10 +33,9 @@ class Cclient(QWidget, testui):
         self.name = self.nameedit.text()
         self.nameedit.clear()
         self.CHAT_STACK.setCurrentIndex(1)
-        HOST = '10.10.21.106'
-        PORT = 9009
+        address = ("192.168.0.4", 9009)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((HOST, PORT))
+        self.sock.connect((address))
         th = threading.Thread(target=self.recvMsg, args=(self.sock,))
         th.daemon = True
         th.start()
@@ -74,13 +71,13 @@ class Cclient(QWidget, testui):
                 if msg[0] == 'G':
                     print(msg)
                     if (msg[1] == 'up'):  # 소켓으로부터받은데이터가 up일경우 적y좌표조정
-                        self.p2_y -= 40
+                        self.p2_y -= 7
                     elif (msg[1] == 'down'):  # 소켓으로부터받은데이터가 down일경우 적y좌표조정
-                        self.p2_y += 40
+                        self.p2_y += 7
                     elif (msg[1] == 'right'):  # 소켓으로부터받은데이터가 right일경우 적x좌표조정
-                        self.p2_x += 40
+                        self.p2_x += 7
                     elif (msg[1] == 'left'):  # 소켓으로부터받은데이터가 left일경우 적x좌표조정
-                        self.p2_x -= 40
+                        self.p2_x -= 7
                 if msg[0] == 'L':
                     print('제이슨!')
                     ulist = json.loads(msg[1])  # bytes형으로 수신된 데이터를 문자열로 변환 출력 json.loads
@@ -122,72 +119,55 @@ class Cclient(QWidget, testui):
 
         # pygame에 사용하도록 비행기 이미지를 호출
         airplane1 = pygame.image.load('test.png')
-        airplane1 = pygame.transform.scale(airplane1, (60, 45))
+        self.airplane1 = pygame.transform.scale(airplane1, (60, 45))
         airplane2 = pygame.image.load('test.png')
-        airplane2 = pygame.transform.scale(airplane2, (60, 45))
+        self.airplane2 = pygame.transform.scale(airplane2, (60, 45))
 
-        th_game1 = threading.Thread(target=self.runGame2, args=(clock, screen, WHITE, done2, airplane2))
-        th_game1.daemon = True
-        th_game1.start()
 
-        self.runGame(clock, screen, WHITE, done1, airplane1)
+        self.runGame(clock, screen, WHITE, done1)
 
         pygame.quit()
 
         # 4. pygame 무한루프
 
-    def runGame(self, clock, screen, WHITE, done, airplane):
-        x = 20
-        y = 24
-
+    def runGame(self, clock, screen, WHITE, done):
+        x = 50
+        y = 50
+        self.p2_x = 50
+        self.p2_y = 50
         while not done:
-            clock.tick(10)
+            clock.tick(100)
             screen.fill(WHITE)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     done = True
-
                 # 방향키 입력에 대한 이벤트 처리
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_UP:
                         pyautogui.keyUp('up')
-                        # 이걸하는이유는 키보드를 꾹누르고있으면 원래는 한번가는데
-                        # 이걸하면은 쭉누르면 쭉갑니다
-                        y -= 20
-                        msg = 'G' + '!*!:!*!' + "up" + '!*!:!*!' + 'asd'
+                        y -= 7
+                        msg = 'G' + '!*!:!*!' + "up" + '!*!:!*!' + 'qwe'
                         self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
                     elif event.key == pygame.K_DOWN:
                         pyautogui.keyUp('down')
-                        y += 20
-                        msg = 'G' + '!*!:!*!' + "down" + '!*!:!*!' + 'asd'
+                        y += 7
+                        msg = 'G' + '!*!:!*!' + "down" + '!*!:!*!' + 'qwe'
                         self.sock.sendall(msg.encode())
                     elif event.key == pygame.K_RIGHT:
                         pyautogui.keyUp('right')
-                        x += 20
-                        msg = 'G' + '!*!:!*!' + "right" + '!*!:!*!' + 'asd'
+                        x += 7
+                        msg = 'G' + '!*!:!*!' + "right" + '!*!:!*!' + 'qwe'
                         self.sock.sendall(msg.encode())
                     elif event.key == pygame.K_LEFT:
                         pyautogui.keyUp('left')
-                        x -= 20
-                        msg = 'G' + '!*!:!*!' + "left" + '!*!:!*!' + 'asd'
+                        x -= 7
+                        msg = 'G' + '!*!:!*!' + "left" + '!*!:!*!' + 'qwe'
                         self.sock.sendall(msg.encode())
-
-            screen.blit(airplane, (x, y))
+            screen.blit(self.airplane2, (self.p2_x, self.p2_y))
+            screen.blit(self.airplane1, (x, y))
             pygame.display.update()
 
-    def runGame2(self, clock, screen, WHITE, done, airplane):
-        self.p2_x = 20
-        self.p2_y = 24
-
-        while not done:
-            clock.tick(10)
-            screen.fill(WHITE)
-
-            if done:
-                break
-            screen.blit(airplane, (self.p2_x, self.p2_y))
-            pygame.display.update()
 
 
 if __name__ == '__main__':

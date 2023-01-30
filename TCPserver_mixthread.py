@@ -56,7 +56,7 @@ class UserManager:  # 유저 컨트롤용 클래스
 
     def gamesignal(self, to, msg):
         sock = self.users[to][0]
-        sock.send(msg.encode())
+        sock.send(msg)
     def messageHandler(self, username, msg):
         if msg[1].strip() == 'E!X@I#T%':  # 클라가 특정 문자(신호) 보내면 disconnect으로 인식해서
             self.removeUser(username)  # 클라리스트에서 삭제
@@ -116,7 +116,7 @@ class ChatingServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 if __name__ == "__main__":
 
-    address = ("10.10.21.106", 9009)
+    address = ("192.168.0.4", 9009)
 
     print('▷ 채팅 서버를 시작합니다.')
     print('▷ 채팅 서버를 끝내려면 Ctrl-C를 누르세요.')
