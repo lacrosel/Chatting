@@ -7,6 +7,8 @@ from PyQt5 import uic
 from PyQt5.QtWidgets import *
 import pygame
 import json
+import random
+import os
 
 testui = uic.loadUiType("ui/chat.ui")[0]
 
@@ -32,8 +34,8 @@ class Cclient(QWidget, testui):
         self.running = True
         self.name = self.nameedit.text()
         self.nameedit.clear()
-        self.CHAT_STACK.setCurrentIndex(1)
-        address = ("192.168.0.4", 9009)
+
+        address = ("10.10.21.106", 9009)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((address))
         th = threading.Thread(target=self.recvMsg, args=(self.sock,))
@@ -65,19 +67,24 @@ class Cclient(QWidget, testui):
                 print(data.decode())
                 msg = data.decode().split('!*!:!*!')
                 print(msg)
+                if msg[0] == 'X':
+                    if msg[1] == 'X':
+                        QMessageBox.information(self, "알림", "이미 존재하는 닉네임입니다.")
+                        self.running = False
+                        break
+                    elif msg[1] == 'O':
+                        self.CHAT_STACK.setCurrentIndex(1)
                 if msg[0] == 'C':
                     self.listWidget.addItem(msg[1])
                     self.scollcheck()
                 if msg[0] == 'G':
                     print(msg)
-                    if (msg[1] == 'up'):  # 소켓으로부터받은데이터가 up일경우 적y좌표조정
-                        self.p2_y -= 7
-                    elif (msg[1] == 'down'):  # 소켓으로부터받은데이터가 down일경우 적y좌표조정
-                        self.p2_y += 7
-                    elif (msg[1] == 'right'):  # 소켓으로부터받은데이터가 right일경우 적x좌표조정
-                        self.p2_x += 7
-                    elif (msg[1] == 'left'):  # 소켓으로부터받은데이터가 left일경우 적x좌표조정
-                        self.p2_x -= 7
+                    if (msg[1] == 'right'):
+                        self.p2_dx = 10
+                    elif (msg[1] == 'left'):
+                        self.p2_dx = -10
+                    elif (msg[1] == 'zero'):
+                        self.p2_dx = 0
                 if msg[0] == 'L':
                     print('제이슨!')
                     ulist = json.loads(msg[1])  # bytes형으로 수신된 데이터를 문자열로 변환 출력 json.loads
@@ -108,66 +115,96 @@ class Cclient(QWidget, testui):
     def pygaming_test(self):
         pygame.init()  # 2. pygame 초기화
 
-        # 3. pygame에 사용되는 전역변수 선언
-        WHITE = (255, 255, 255)
-        size = [400, 500]
+        size = [600, 800]
         screen = pygame.display.set_mode(size)
 
-        done1 = False
-        done2 = False
+        done = False
         clock = pygame.time.Clock()
 
-        # pygame에 사용하도록 비행기 이미지를 호출
-        airplane1 = pygame.image.load('test.png')
-        self.airplane1 = pygame.transform.scale(airplane1, (60, 45))
-        airplane2 = pygame.image.load('test.png')
-        self.airplane2 = pygame.transform.scale(airplane2, (60, 45))
-
-
-        self.runGame(clock, screen, WHITE, done1)
-
+        self.runGame(size, screen, done, clock)
         pygame.quit()
 
-        # 4. pygame 무한루프
+    def runGame(self, size, screen, done, clock):
+        dung_image = pygame.image.load('ddong.png')
+        dung_image = pygame.transform.scale(dung_image, (50, 50))
+        dungs = []
 
-    def runGame(self, clock, screen, WHITE, done):
-        x = 50
-        y = 50
-        self.p2_x = 50
-        self.p2_y = 50
+        for i in range(5):
+            rect = pygame.Rect(dung_image.get_rect())
+            rect.left = random.randint(0, size[0])
+            rect.top = -100
+            dy = random.randint(3, 9)
+            dungs.append({'rect': rect, 'dy': dy})
+
+        character1_image = pygame.image.load('character1.png')
+        character1_image = pygame.transform.scale(character1_image, (70, 70))
+        character = pygame.Rect(character1_image.get_rect())
+        character.left = size[0] // 2 - character.width // 2
+        character.top = size[1] - character.height
+        character_dx = 0
+
+        character2_image = pygame.image.load('character2.png')
+        character2_image = pygame.transform.scale(character2_image, (70, 70))
+        character2 = pygame.Rect(character2_image.get_rect())
+        character2.left = size[0] // 2 - character2.width // 2
+        character2.top = size[1] - character2.height
+        self.p2_dx = 0
+
+
         while not done:
-            clock.tick(100)
-            screen.fill(WHITE)
+            clock.tick(40)
+            screen.fill((0, 0, 0))
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    done = True
-                # 방향키 입력에 대한 이벤트 처리
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_UP:
-                        pyautogui.keyUp('up')
-                        y -= 7
-                        msg = 'G' + '!*!:!*!' + "up" + '!*!:!*!' + 'qwe'
-                        self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
-                    elif event.key == pygame.K_DOWN:
-                        pyautogui.keyUp('down')
-                        y += 7
-                        msg = 'G' + '!*!:!*!' + "down" + '!*!:!*!' + 'qwe'
-                        self.sock.sendall(msg.encode())
-                    elif event.key == pygame.K_RIGHT:
-                        pyautogui.keyUp('right')
-                        x += 7
-                        msg = 'G' + '!*!:!*!' + "right" + '!*!:!*!' + 'qwe'
-                        self.sock.sendall(msg.encode())
-                    elif event.key == pygame.K_LEFT:
-                        pyautogui.keyUp('left')
-                        x -= 7
-                        msg = 'G' + '!*!:!*!' + "left" + '!*!:!*!' + 'qwe'
-                        self.sock.sendall(msg.encode())
-            screen.blit(self.airplane2, (self.p2_x, self.p2_y))
-            screen.blit(self.airplane1, (x, y))
+            if self.start_sginal:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        done = True
+                        break
+                    elif event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_LEFT:
+                            character_dx = -10
+                            msg = 'G' + '!*!:!*!' + "left" + '!*!:!*!' + 'asd'
+                            self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
+                        elif event.key == pygame.K_RIGHT:
+                            character_dx = 10
+                            msg = 'G' + '!*!:!*!' + "right" + '!*!:!*!' + 'asd'
+                            self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
+                    elif event.type == pygame.KEYUP:
+                        if event.key == pygame.K_LEFT:
+                            character_dx = 0
+                            msg = 'G' + '!*!:!*!' + "zero" + '!*!:!*!' + 'asd'
+                            self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
+                        elif event.key == pygame.K_RIGHT:
+                            character_dx = 0
+                            msg = 'G' + '!*!:!*!' + "zero" + '!*!:!*!' + 'asd'
+                            self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
+
+                for dung in dungs:
+                    dung['rect'].top += dung['dy']
+                    if dung['rect'].top > size[1]:
+                        dungs.remove(dung)
+                        rect = pygame.Rect(dung_image.get_rect())
+                        rect.left = random.randint(0, size[0])
+                        rect.top = -100
+                        dy = random.randint(3, 9)
+                        dungs.append({'rect': rect, 'dy': dy})
+
+                character.left = character.left + character_dx
+                character2.left = character2.left + self.p2_dx
+                if character.left < 0:
+                    character.left = 0
+                elif character.left > size[0] - character.width:
+                    character.left = size[0] - character.width
+
+                screen.blit(character1_image, character)
+                screen.blit(character2_image, character2)
+                for dung in dungs:
+                    if dung['rect'].colliderect(character):
+                        done = False
+                    screen.blit(dung_image, dung['rect'])
+            else:
+                pass
             pygame.display.update()
-
 
 
 if __name__ == '__main__':

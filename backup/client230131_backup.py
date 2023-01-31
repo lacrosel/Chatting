@@ -125,7 +125,7 @@ class Cclient(QWidget, testui):
         pygame.quit()
 
     def runGame(self, size, screen, done, clock):
-        dung_image = pygame.image.load('ddong.png')
+        dung_image = pygame.image.load('../ddong.png')
         dung_image = pygame.transform.scale(dung_image, (50, 50))
         dungs = []
 
@@ -136,14 +136,14 @@ class Cclient(QWidget, testui):
             dy = random.randint(3, 9)
             dungs.append({'rect': rect, 'dy': dy})
 
-        character1_image = pygame.image.load('character1.png')
+        character1_image = pygame.image.load('../character1.png')
         character1_image = pygame.transform.scale(character1_image, (70, 70))
         character = pygame.Rect(character1_image.get_rect())
         character.left = size[0] // 2 - character.width // 2
         character.top = size[1] - character.height
         character_dx = 0
 
-        character2_image = pygame.image.load('character2.png')
+        character2_image = pygame.image.load('../character2.png')
         character2_image = pygame.transform.scale(character2_image, (70, 70))
         character2 = pygame.Rect(character2_image.get_rect())
         character2.left = size[0] // 2 - character2.width // 2
@@ -163,20 +163,20 @@ class Cclient(QWidget, testui):
                     elif event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_LEFT:
                             character_dx = -10
-                            msg = 'G' + '!*!:!*!' + "left" + '!*!:!*!' + 'qwe'
+                            msg = 'G' + '!*!:!*!' + "left" + '!*!:!*!' + 'asd'
                             self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
                         elif event.key == pygame.K_RIGHT:
                             character_dx = 10
-                            msg = 'G' + '!*!:!*!' + "right" + '!*!:!*!' + 'qwe'
+                            msg = 'G' + '!*!:!*!' + "right" + '!*!:!*!' + 'asd'
                             self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
                     elif event.type == pygame.KEYUP:
                         if event.key == pygame.K_LEFT:
                             character_dx = 0
-                            msg = 'G' + '!*!:!*!' + "zero" + '!*!:!*!' + 'qwe'
+                            msg = 'G' + '!*!:!*!' + "zero" + '!*!:!*!' + 'asd'
                             self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
                         elif event.key == pygame.K_RIGHT:
                             character_dx = 0
-                            msg = 'G' + '!*!:!*!' + "zero" + '!*!:!*!' + 'qwe'
+                            msg = 'G' + '!*!:!*!' + "zero" + '!*!:!*!' + 'asd'
                             self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
 
                 for dung in dungs:

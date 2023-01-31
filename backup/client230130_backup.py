@@ -118,9 +118,9 @@ class Cclient(QWidget, testui):
         clock = pygame.time.Clock()
 
         # pygame에 사용하도록 비행기 이미지를 호출
-        airplane1 = pygame.image.load('test.png')
+        airplane1 = pygame.image.load('../test.png')
         airplane1 = pygame.transform.scale(airplane1, (60, 45))
-        airplane2 = pygame.image.load('test.png')
+        airplane2 = pygame.image.load('../test.png')
         airplane2 = pygame.transform.scale(airplane2, (60, 45))
 
         th_game1 = threading.Thread(target=self.runGame2, args=(clock, screen, WHITE, done2, airplane2))
