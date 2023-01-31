@@ -80,9 +80,9 @@ class UserManager:  # 유저 컨트롤용 클래스
         Cmsg = msg.decode().split('!*!:!*!')
         sendlist = []
         for i in range(5):
-            a = random.randint(50, Cmsg[3] - 50)
+            a = random.randint(50, int(Cmsg[2]) - 50)
             b = random.randint(3, 9)
-            sendlist.append([a,b])
+            sendlist.append([a, b])
         print('qhsosek', sendlist)
         slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
         return slist
@@ -100,7 +100,7 @@ class TCPhandler(socketserver.BaseRequestHandler):
             while msg:
                 # print(msg.decode())  # 서버 화면에 출력
                 Cmsg = msg.decode().split('!*!:!*!')
-                print(Cmsg)
+                print('Cmsg', Cmsg)
                 if Cmsg[0] == 'C':
                     if self.userManager.messageHandler(self.username, Cmsg) == -1:
                         self.request.close()  # disConnection
@@ -138,7 +138,7 @@ class ChatingServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 if __name__ == "__main__":
 
-    address = ("10.10.21.106", 9009)
+    address = ("192.168.0.76", 9009)
 
     print('▷ 채팅 서버를 시작합니다.')
     print('▷ 채팅 서버를 끝내려면 Ctrl-C를 누르세요.')

@@ -35,7 +35,7 @@ class Cclient(QWidget, testui):
         self.name = self.nameedit.text()
         self.nameedit.clear()
 
-        address = ("10.10.21.106", 9009)
+        address = ("192.168.0.76", 9009)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((address))
         th = threading.Thread(target=self.recvMsg, args=(self.sock,))
@@ -79,22 +79,26 @@ class Cclient(QWidget, testui):
                     self.scollcheck()
                 if msg[0] == 'G':
                     print(msg)
-                    if (msg[1] == 'right'):
+                    if msg[1] == 'right':
                         self.p2_dx = 10
-                    elif (msg[1] == 'left'):
+                    elif msg[1] == 'left':
                         self.p2_dx = -10
-                    elif (msg[1] == 'zero'):
+                    elif msg[1] == 'zero':
                         self.p2_dx = 0
                 if msg[0] == 'Gc':
-                    print("dddddd")
-                    self.poss = json.loads(msg[2])
-                    print(self.poss)
+                    print("동데이터!")
+                    if msg[1] == 'dongset':
+                        self.poss = json.loads(msg[2])
+                        print(self.poss)
+                        self.pygaming_test()
+                    elif msg[1] == 'dong':
+                        pass
                 if msg[0] == 'L':
                     print('제이슨!')
                     ulist = json.loads(msg[1])  # bytes형으로 수신된 데이터를 문자열로 변환 출력 json.loads
                     self.userList_set(ulist)
-            except:
-                pass  # 예외 원인 무시
+            except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.
+                print(e)
             if not self.running:
                 break
         self.sock.close()
@@ -114,63 +118,60 @@ class Cclient(QWidget, testui):
         self.CHAT_STACK.setCurrentIndex(3)
 
     def test(self):
-        self.pygaming_test()
+        self.size = [600, 800]
+        self.sock.send(f'Gc!*!:!*!dongset!*!:!*!{self.size[0]}'.encode())
+        time.sleep(0.1)
+
+
 
     def pygaming_test(self):
         pygame.init()  # 2. pygame 초기화
 
-        size = [600, 800]
-        screen = pygame.display.set_mode(size)
 
-        done = False
-        clock = pygame.time.Clock()
+        self.screen = pygame.display.set_mode(self.size)
 
-        self.runGame(size, screen, done, clock)
+        self.done = False
+        self.clock = pygame.time.Clock()
+
+        self.runGame()
 
         pygame.quit()
 
-    def runGame(self, size, screen, done, clock):
+    def runGame(self):
         dung_image = pygame.image.load('ddong.png')
         self.dung_image = pygame.transform.scale(dung_image, (50, 50))
         self.dungs = []
-        self.poss = []
-
-        self.sock.send(f'Gc!*!:!*!dongset!*!:!*!{size[0]}'.encode())
-
 
         character1_image = pygame.image.load('character1.png')
         self.character1_image = pygame.transform.scale(character1_image, (70, 70))
         self.character = pygame.Rect(character1_image.get_rect())
-        self.character.left = size[0] // 2 - self.character.width // 2
-        self.character.top = size[1] - self.character.height
+        self.character.left = self.size[0] // 2 - self.character.width // 2
+        self.character.top = self.size[1] - self.character.height
         self.character_dx = 0
 
         character2_image = pygame.image.load('character2.png')
         self.character2_image = pygame.transform.scale(character2_image, (70, 70))
         self.character2 = pygame.Rect(character2_image.get_rect())
-        self.character2.left = size[0] // 2 - self.character2.width // 2
-        self.character2.top = size[1] - self.character2.height
+        self.character2.left = self.size[0] // 2 - self.character2.width // 2
+        self.character2.top = self.size[1] - self.character2.height
         self.p2_dx = 0
-        time.sleep(3)
         self.start_signal = True
+
         for i in range(5):
-            rect = pygame.Rect(dung_image.get_rect())
+            rect = pygame.Rect(self.dung_image.get_rect())
             rect.left = self.poss[i][0]
             rect.top = -100
             dy = self.poss[i][1]
             self.dungs.append({'rect': rect, 'dy': dy})
-        self.startGame(size, screen, done, clock)
 
 
-    def startGame(self, size, screen, done, clock):
-        while not done:
-            clock.tick(40)
-            screen.fill((0, 0, 0))
+        while not self.done:
+            self.screen.fill((0, 0, 0))
 
             if self.start_signal:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
-                        done = True
+                        self.done = True
                         break
                     elif event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_LEFT:
@@ -193,10 +194,10 @@ class Cclient(QWidget, testui):
 
                 for dung in self.dungs:
                     dung['rect'].top += dung['dy']
-                    if dung['rect'].top > size[1]:
+                    if dung['rect'].top > self.size[1]:
                         self.dungs.remove(dung)
                         rect = pygame.Rect(self.dung_image.get_rect())
-                        rect.left = random.randint(50, size[0]-50)
+                        rect.left = random.randint(50, self.size[0] - 50)
                         rect.top = -100
                         dy = random.randint(3, 9)
                         self.dungs.append({'rect': rect, 'dy': dy})
@@ -205,18 +206,18 @@ class Cclient(QWidget, testui):
                 self.character2.left = self.character2.left + self.p2_dx
                 if self.character.left < 0:
                     self.character.left = 0
-                elif self.character.left > size[0] - self.character.width:
-                    self.character.left = size[0] - self.character.width
+                elif self.character.left > self.size[0] - self.character.width:
+                    self.character.left = self.size[0] - self.character.width
 
-
-                screen.blit(self.character1_image, self.character)
-                screen.blit(self.character2_image, self.character2)
+                self.screen.blit(self.character1_image, self.character)
+                self.screen.blit(self.character2_image, self.character2)
                 for dung in self.dungs:
                     if dung['rect'].colliderect(self.character):
-                        done = False
-                    screen.blit(self.dung_image, dung['rect'])
+                        self.done = False
+                    self.screen.blit(self.dung_image, dung['rect'])
             else:
                 pass
+            self.clock.tick(40)
             pygame.display.update()
 
 
