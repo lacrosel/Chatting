@@ -2,9 +2,9 @@ import socketserver
 import json
 import threading
 import time
+import random
 
 import pygame
-
 
 lock = threading.Lock()  # lock 선언
 
@@ -22,7 +22,7 @@ class UserManager:  # 유저 컨트롤용 클래스
         cl_sock.send('X!*!:!*!O'.encode())
         # 새로운 사용자를 등록함
         lock.acquire()  # Lock (사용자 등록 과정에서 다른 스레드랑 겹치지 않도록 lock
-        self.users[username] = (cl_sock, addr) # 유저네임을 키값 소켓정보와 아이피는 밸류값
+        self.users[username] = (cl_sock, addr)  # 유저네임을 키값 소켓정보와 아이피는 밸류값
         # client_socket, IP tuple로 저장(접속데이터니까 혹시 수정안되게)
         lock.release()  # Unlock
 
@@ -34,7 +34,7 @@ class UserManager:  # 유저 컨트롤용 클래스
         for name in self.users.keys():  # 키값이 username으로 채팅방에서 참여인원 출력용
             userList.append(name)
         print(userList)
-        ulist = 'L!*!:!*!'+json.dumps(userList)  # json.dump메서드를 이용해서 리스트 바이너리화
+        ulist = 'L!*!:!*!' + json.dumps(userList)  # json.dump메서드를 이용해서 리스트 바이너리화
         self.sendMessageToAll(ulist)
         '''
         참여인원 누구인지 확인용 아직 ui로 안해서 json으로 키값 자체 전송해도 ui에서 표현가능
@@ -63,6 +63,7 @@ class UserManager:  # 유저 컨트롤용 클래스
     def gamesignal(self, to, msg):
         sock = self.users[to][0]
         sock.send(msg)
+
     def messageHandler(self, username, msg):
         if msg[1].strip() == 'E!X@I#T%':  # 클라가 특정 문자(신호) 보내면 disconnect으로 인식해서
             self.removeUser(username)  # 클라리스트에서 삭제
@@ -74,6 +75,17 @@ class UserManager:  # 유저 컨트롤용 클래스
         # Dictionary 값 2개 추출: client_sock, IP로 구성된 tuple 값 위에서 설명함.
         for cl_sock, addr in self.users.values():
             cl_sock.send(msg.encode())  # 각각의 사용자에게 메시지 전송
+
+    def dongGameset(self, msg):
+        Cmsg = msg.decode().split('!*!:!*!')
+        sendlist = []
+        for i in range(5):
+            a = random.randint(50, Cmsg[3] - 50)
+            b = random.randint(3, 9)
+            sendlist.append([a,b])
+        print('qhsosek', sendlist)
+        slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
+        return slist
 
 
 class TCPhandler(socketserver.BaseRequestHandler):
@@ -95,6 +107,10 @@ class TCPhandler(socketserver.BaseRequestHandler):
                         break  # recv 종료
                 elif Cmsg[0] == 'G':
                     self.userManager.gamesignal(Cmsg[2], msg)
+                elif Cmsg[0] == 'Gc':
+                    if Cmsg[1] == 'dongset':
+                        slist = self.userManager.dongGameset(msg)
+                        self.request.send(slist.encode())
                 msg = self.request.recv(1024)  # 메시지 수신 대기
 
         except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.
@@ -111,9 +127,6 @@ class TCPhandler(socketserver.BaseRequestHandler):
             if self.userManager.addUser(username, self.request, self.client_address):
                 # 네임, 소켓정보, 주소 파라미터로 클라 추가
                 return username
-
-
-
 
 
 # socketserver.ThreadingMixIn: 독립된 스레드로 처리하도록 접속시 마다 새로운 스레드 생성

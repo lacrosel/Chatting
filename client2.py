@@ -149,7 +149,7 @@ class Cclient(QWidget, testui):
         character2.left = size[0] // 2 - character2.width // 2
         character2.top = size[1] - character2.height
         self.p2_dx = 0
-
+        self.start_sginal = True
 
         while not done:
             clock.tick(40)

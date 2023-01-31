@@ -85,6 +85,10 @@ class Cclient(QWidget, testui):
                         self.p2_dx = -10
                     elif (msg[1] == 'zero'):
                         self.p2_dx = 0
+                if msg[0] == 'Gc':
+                    print("dddddd")
+                    self.poss = json.loads(msg[2])
+                    print(self.poss)
                 if msg[0] == 'L':
                     print('제이슨!')
                     ulist = json.loads(msg[1])  # bytes형으로 수신된 데이터를 문자열로 변환 출력 json.loads
@@ -122,86 +126,95 @@ class Cclient(QWidget, testui):
         clock = pygame.time.Clock()
 
         self.runGame(size, screen, done, clock)
+
         pygame.quit()
 
     def runGame(self, size, screen, done, clock):
         dung_image = pygame.image.load('ddong.png')
-        dung_image = pygame.transform.scale(dung_image, (50, 50))
-        dungs = []
+        self.dung_image = pygame.transform.scale(dung_image, (50, 50))
+        self.dungs = []
+        self.poss = []
 
-        for i in range(5):
-            rect = pygame.Rect(dung_image.get_rect())
-            rect.left = random.randint(0, size[0])
-            rect.top = -100
-            dy = random.randint(3, 9)
-            dungs.append({'rect': rect, 'dy': dy})
+        self.sock.send(f'Gc!*!:!*!dongset!*!:!*!{size[0]}'.encode())
+
 
         character1_image = pygame.image.load('character1.png')
-        character1_image = pygame.transform.scale(character1_image, (70, 70))
-        character = pygame.Rect(character1_image.get_rect())
-        character.left = size[0] // 2 - character.width // 2
-        character.top = size[1] - character.height
-        character_dx = 0
+        self.character1_image = pygame.transform.scale(character1_image, (70, 70))
+        self.character = pygame.Rect(character1_image.get_rect())
+        self.character.left = size[0] // 2 - self.character.width // 2
+        self.character.top = size[1] - self.character.height
+        self.character_dx = 0
 
         character2_image = pygame.image.load('character2.png')
-        character2_image = pygame.transform.scale(character2_image, (70, 70))
-        character2 = pygame.Rect(character2_image.get_rect())
-        character2.left = size[0] // 2 - character2.width // 2
-        character2.top = size[1] - character2.height
+        self.character2_image = pygame.transform.scale(character2_image, (70, 70))
+        self.character2 = pygame.Rect(character2_image.get_rect())
+        self.character2.left = size[0] // 2 - self.character2.width // 2
+        self.character2.top = size[1] - self.character2.height
         self.p2_dx = 0
+        time.sleep(3)
+        self.start_signal = True
+        for i in range(5):
+            rect = pygame.Rect(dung_image.get_rect())
+            rect.left = self.poss[i][0]
+            rect.top = -100
+            dy = self.poss[i][1]
+            self.dungs.append({'rect': rect, 'dy': dy})
+        self.startGame(size, screen, done, clock)
 
 
+    def startGame(self, size, screen, done, clock):
         while not done:
             clock.tick(40)
             screen.fill((0, 0, 0))
 
-            if self.start_sginal:
+            if self.start_signal:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         done = True
                         break
                     elif event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_LEFT:
-                            character_dx = -10
+                            self.character_dx = -10
                             msg = 'G' + '!*!:!*!' + "left" + '!*!:!*!' + 'asd'
-                            self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
+                            # self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
                         elif event.key == pygame.K_RIGHT:
-                            character_dx = 10
+                            self.character_dx = 10
                             msg = 'G' + '!*!:!*!' + "right" + '!*!:!*!' + 'asd'
-                            self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
+                            # self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
                     elif event.type == pygame.KEYUP:
                         if event.key == pygame.K_LEFT:
-                            character_dx = 0
+                            self.character_dx = 0
                             msg = 'G' + '!*!:!*!' + "zero" + '!*!:!*!' + 'asd'
-                            self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
+                            # self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
                         elif event.key == pygame.K_RIGHT:
-                            character_dx = 0
+                            self.character_dx = 0
                             msg = 'G' + '!*!:!*!' + "zero" + '!*!:!*!' + 'asd'
-                            self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
+                            # self.sock.sendall(msg.encode())  # 클라이언트에게 내가내린명령전송
 
-                for dung in dungs:
+                for dung in self.dungs:
                     dung['rect'].top += dung['dy']
                     if dung['rect'].top > size[1]:
-                        dungs.remove(dung)
-                        rect = pygame.Rect(dung_image.get_rect())
-                        rect.left = random.randint(0, size[0])
+                        self.dungs.remove(dung)
+                        rect = pygame.Rect(self.dung_image.get_rect())
+                        rect.left = random.randint(50, size[0]-50)
                         rect.top = -100
                         dy = random.randint(3, 9)
-                        dungs.append({'rect': rect, 'dy': dy})
+                        self.dungs.append({'rect': rect, 'dy': dy})
 
-                character.left = character.left + character_dx
-                character2.left = character2.left + self.p2_dx
-                if character.left < 0:
-                    character.left = 0
-                elif character.left > size[0] - character.width:
-                    character.left = size[0] - character.width
+                self.character.left = self.character.left + self.character_dx
+                self.character2.left = self.character2.left + self.p2_dx
+                if self.character.left < 0:
+                    self.character.left = 0
+                elif self.character.left > size[0] - self.character.width:
+                    self.character.left = size[0] - self.character.width
 
-                screen.blit(character1_image, character)
-                screen.blit(character2_image, character2)
-                for dung in dungs:
-                    if dung['rect'].colliderect(character):
+
+                screen.blit(self.character1_image, self.character)
+                screen.blit(self.character2_image, self.character2)
+                for dung in self.dungs:
+                    if dung['rect'].colliderect(self.character):
                         done = False
-                    screen.blit(dung_image, dung['rect'])
+                    screen.blit(self.dung_image, dung['rect'])
             else:
                 pass
             pygame.display.update()
