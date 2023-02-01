@@ -20,6 +20,7 @@ class UserManager:  # 유저 컨트롤용 클래스
             cl_sock.send('X!*!:!*!X'.encode())
             return None
         cl_sock.send('X!*!:!*!O'.encode())
+        time.sleep(0.01)
         # 새로운 사용자를 등록함
         lock.acquire()  # Lock (사용자 등록 과정에서 다른 스레드랑 겹치지 않도록 lock
         self.users[username] = (cl_sock, addr)  # 유저네임을 키값 소켓정보와 아이피는 밸류값
@@ -28,7 +29,7 @@ class UserManager:  # 유저 컨트롤용 클래스
 
         # 모든 사용자에게 메시지 전송
         self.sendMessageToAll('C!*!:!*! [%s]님이 입장했습니다.' % username)
-        time.sleep(0.001)
+        time.sleep(0.01)
         print('▷ 대화 참여자 수 [%d]' % len(self.users))
         userList = []  # 참여인원 누구인지
         for name in self.users.keys():  # 키값이 username으로 채팅방에서 참여인원 출력용
@@ -85,11 +86,50 @@ class UserManager:  # 유저 컨트롤용 클래스
             sendlist.append([a, b])
         print('qhsosek', sendlist)
         slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
+        self.users['qwe'][0].send(slist.encode())
+        self.users['asd'][0].send(slist.encode())
         return slist
 
+    def dongre(self):
+        a = random.randint(50, 600 - 50)
+        b = random.randint(3, 9)
+        sendlist = [a, b]
+        slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
+        self.users['qwe'][0].send(slist.encode())
+        self.users['asd'][0].send(slist.encode())
 
+
+class gameserver:
+    def __init__(self):
+        self.gameroom = {}
+
+
+    def entranceRoom(self, user, roomname):
+        try:
+            self.gameroom[roomname].append(user)
+            print(self.gameroom)
+        except KeyError:
+            self.gameroom[roomname] = []
+            self.gameroom[roomname].append(user)
+            print(self.gameroom)
+
+    def exitRoom(self, user, roomname):
+        print('1', self.gameroom[roomname])
+        self.gameroom[roomname].remove(user)
+        print('2', self.gameroom[roomname])
+        if len(self.gameroom[roomname]) == 0:
+            del self.gameroom[roomname]
+        print(self.gameroom)
+    def RoomUserlist(self, roomname, userlist):
+        aa = self.gameroom[roomname]
+        senddata = json.dumps(aa)
+        for i in aa:
+            userlist[i][0].send(f'Gr!*!:!*!{senddata}*'.encode())
+        print('게임방 유저 보낸다~')
+        print(self.gameroom)
 class TCPhandler(socketserver.BaseRequestHandler):
     userManager = UserManager()  # 유저 클래스 선언
+    gameServer = gameserver()
 
     def setup(self):
         self.username = self.registerUsername()  # 사용자 id 처리
@@ -108,9 +148,19 @@ class TCPhandler(socketserver.BaseRequestHandler):
                 elif Cmsg[0] == 'G':
                     self.userManager.gamesignal(Cmsg[2], msg)
                 elif Cmsg[0] == 'Gc':
-                    if Cmsg[1] == 'dongset':
+                    if Cmsg[1] == 'dongset' and Cmsg[3] == '1':
                         slist = self.userManager.dongGameset(msg)
-                        self.request.send(slist.encode())
+                        # self.request.send(slist.encode())
+                    elif Cmsg[1] == 'redong' and Cmsg[2][1] == '1':
+                        self.userManager.dongre()
+                elif Cmsg[0] == 'Gr':
+                    if Cmsg[2][-1:] == '@':
+                        self.gameServer.entranceRoom(Cmsg[1], Cmsg[2][:-1])
+                        self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users)
+                    elif Cmsg[2][-1:] == '#':
+                        print('s나감')
+                        self.gameServer.exitRoom(Cmsg[1], Cmsg[2][:-1])
+                        self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users)
                 msg = self.request.recv(1024)  # 메시지 수신 대기
 
         except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.
@@ -136,9 +186,9 @@ class ChatingServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass  # 이건 단순하게 스레드 동작 하게 한다는 거니까 특별히 뭘 적어줄 필요 x
 
 
-if __name__ == "__main__":
 
-    address = ("192.168.0.76", 9009)
+if __name__ == "__main__":
+    address = ("10.10.21.106", 9009)
 
     print('▷ 채팅 서버를 시작합니다.')
     print('▷ 채팅 서버를 끝내려면 Ctrl-C를 누르세요.')
