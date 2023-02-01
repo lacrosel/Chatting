@@ -25,16 +25,19 @@ class Cclient(QWidget, testui):
         self.running = False
         # 연결 서버 정보
         # self.signal = {'c':}
+        self.F_gamecreate.hide()
 
-        self.CHAT_BT_close2.clicked.connect(lambda: self.pageReset(1))
-
+        self.gr_roomclose.clicked.connect(lambda: self.pageReset(1))
+        self.create_cancel.clicked.connect(lambda: self.pageReset(2))
+        self.create_agree.clicked.connect(self.gameRoom_create)
+        self.CHAT_gamecreate.clicked.connect(self.gameCreate_check)
 
         self.connection.clicked.connect(self.admission)
         self.CHAT_BT_tsend.clicked.connect(self.sendMsg)
         self.CHAT_LE_tsend.returnPressed.connect(self.sendMsg)
         self.CHAT_timeExit.clicked.connect(self.CHAT_exit)
 
-        self.CHAT_game.clicked.connect(self.test)
+        # self.CHAT_game.clicked.connect(self.test)
 
     def admission(self):
         self.running = True
@@ -101,15 +104,19 @@ class Cclient(QWidget, testui):
                 #         print('동이다')
                 #         self.rposs = json.loads(msg[2])
                 if msg[0] == 'Gr':
-                    if msg[1][-1] == '*':
+                    if msg[1][-1] == '!':
+                        QMessageBox.information(self, "알림", "이미 존재하는 방입니다.")
+                    elif msg[1][-1] == '@':
                         print('rasrasrrrrrrrrr')
                         self.gru_list = json.loads(msg[1][:-1])
                         self.gameroomset(1)
 
                 if msg[0] == 'L':
-                    print('제이슨!')
-                    ulist = json.loads(msg[1])  # bytes형으로 수신된 데이터를 문자열로 변환 출력 json.loads
-                    self.userList_set(ulist)
+                    if msg[1][-1] == 'C':
+                        print('제이슨!')
+                        ulist = json.loads(msg[1])  # bytes형으로 수신된 데이터를 문자열로 변환 출력 json.loads
+                        self.userList_set(ulist)
+
             except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.
                 print(e)
             if not self.running:
@@ -117,18 +124,30 @@ class Cclient(QWidget, testui):
         self.sock.close()
         print("중지")
 
+    def gameCreate_check(self):
+        self.F_gamecreate.show()
 
     def gameroomset(self, signal):
         if signal == 1:
-            self.CHAT_STACK.setCurrentIndex(2)
+            self.CHAT_STACK.setCurrentIndex(2)  # 이동
             print(len(self.gru_list))
-            # self.Game_userlist
+            self.gr_roomname.setText(self.game_name.text())
+            self.gr_people.setText(self.game_ppcb.currentText())
+            self.gr_gamename.setTexxt(self.game_gamecb.currentText())
+            self.pageReset(2)
+            # 게임방 접속 인원
             self.Game_userlist.clearContents()
-            self.Game_userlist.setRowCount(len(self.gru_list))
+            self.Game_userlist.setRowCount(len(self.gru_list[0]))
             self.Game_userlist.setColumnCount(1)
+            # 초대 가능 인원
+            self.Game_userlist2.clearContents()  # 초기화
+            self.Game_userlist2.setRowCount(len(self.gru_list[1]))
+            self.Game_userlist2.setColumnCount(1)
 
-            for i in range(len(self.gru_list)):
-                self.Game_userlist.setItem(i, 0, QTableWidgetItem(self.gru_list[i]))
+            for ii in range(len(self.gru_list[0])):  # 접속 인원 출력
+                self.Game_userlist.setItem(ii, 0, QTableWidgetItem(self.gru_list[0][ii]))
+            for oo in range(len(self.gru_list[1])):  # 접속 인원 출력
+                self.Game_userlist.setItem(oo, 0, QTableWidgetItem(self.gru_list[1][oo]))
 
     def scollcheck(self):
         time.sleep(0.005)
@@ -143,19 +162,26 @@ class Cclient(QWidget, testui):
         self.listWidget.clear()
         self.CHAT_STACK.setCurrentIndex(3)
 
-
-    def test(self):
-        self.sock.send(f'Gr!*!:!*!{self.name}!*!:!*!1q2w3e@'.encode())
+    def gameRoom_create(self):
+        if self.game_name.text() is None or self.game_ppcb.currentIndex() == 0 or self.game_gamecb.currentIndex() == 0:
+            a = QMessageBox.information(self, "알림", "정보를 확인 해주세요.")
+            return
+        self.roomname = self.game_name.text()
+        self.sock.send(f'Gr!*!:!*!{self.name}!*!:!*!{self.roomname}@'.encode())
 
     def pageReset(self, signal):
-        if signal == 1:
+        if signal == 1:  # 게임방에서 나갔을때. 초기화
             self.Game_userlist2.clear()
             self.Game_userlist.clear()
             self.gr_chat.clear()
             self.gr_sendtext.clear()
             self.CHAT_STACK.setCurrentIndex(1)
-            self.sock.send(f'Gr!*!:!*!{self.name}!*!:!*!1q2w3e#'.encode())
-
+            self.sock.send(f'Gr!*!:!*!{self.name}!*!:!*!{self.roomname}#'.encode())
+        elif signal == 2:  # 게임방 입장시 초기화
+            self.game_name.clear()
+            self.game_ppcb.setCurrentIndex(0)
+            self.game_gamecb.setCurrentIndex(0)
+            self.F_gamecreate.hide()
 
     # def test(self):
     #     self.usernum = 1
@@ -264,6 +290,7 @@ class Cclient(QWidget, testui):
                 pass
             self.clock.tick(40)
             pygame.display.update()
+
 
 class Thread_list(QThread):
     def __init__(self, parent):

@@ -3,7 +3,7 @@ import json
 import threading
 import time
 import random
-
+import copy
 import pygame
 
 lock = threading.Lock()  # lock 선언
@@ -12,7 +12,7 @@ lock = threading.Lock()  # lock 선언
 class UserManager:  # 유저 컨트롤용 클래스
     def __init__(self):
         self.users = {}  # 유저 데이터 수집용
-
+        self.Ninviteuser = []
     def addUser(self, username, cl_sock, addr):
         if username in self.users:
             # 받은 유저네임이 이미 존재하면
@@ -35,7 +35,7 @@ class UserManager:  # 유저 컨트롤용 클래스
         for name in self.users.keys():  # 키값이 username으로 채팅방에서 참여인원 출력용
             userList.append(name)
         print(userList)
-        ulist = 'L!*!:!*!' + json.dumps(userList)  # json.dump메서드를 이용해서 리스트 바이너리화
+        ulist = 'L!*!:!*!' + json.dumps(userList)+'c'  # json.dump메서드를 이용해서 리스트 바이너리화
         self.sendMessageToAll(ulist)
         '''
         참여인원 누구인지 확인용 아직 ui로 안해서 json으로 키값 자체 전송해도 ui에서 표현가능
@@ -49,6 +49,7 @@ class UserManager:  # 유저 컨트롤용 클래스
 
         lock.acquire()  # Lock
         del self.users[username]  # Dictionary에서 아이디에 해당하는 항목 삭제
+
         lock.release()  # Unlock
 
         self.sendMessageToAll('C!*!:!*! [ %s ]님이 퇴장했습니다.' % username)
@@ -58,7 +59,7 @@ class UserManager:  # 유저 컨트롤용 클래스
         for name in self.users.keys():  # 키값이 username으로 채팅방에서 참여인원 출력용
             userList.append(name)
         print(userList)
-        ulist = 'L!*!:!*!' + json.dumps(userList)  # json.dump메서드를 이용해서 리스트 바이너리화
+        ulist = 'L!*!:!*!' + json.dumps(userList)+'c'  # json.dump메서드를 이용해서 리스트 바이너리화
         self.sendMessageToAll(ulist)
 
     def gamesignal(self, to, msg):
@@ -102,31 +103,40 @@ class UserManager:  # 유저 컨트롤용 클래스
 class gameserver:
     def __init__(self):
         self.gameroom = {}
-
+        self.gamingUser = []
 
     def entranceRoom(self, user, roomname):
         try:
+            if roomname in self.gameroom.keys():
+                return False
             self.gameroom[roomname].append(user)
             print(self.gameroom)
         except KeyError:
             self.gameroom[roomname] = []
             self.gameroom[roomname].append(user)
             print(self.gameroom)
+        self.gamingUser.append(user)
+        return True
 
     def exitRoom(self, user, roomname):
-        print('1', self.gameroom[roomname])
         self.gameroom[roomname].remove(user)
-        print('2', self.gameroom[roomname])
+        self.gamingUser.remove(user)
         if len(self.gameroom[roomname]) == 0:
             del self.gameroom[roomname]
         print(self.gameroom)
     def RoomUserlist(self, roomname, userlist):
         aa = self.gameroom[roomname]
+        templist = copy.deepcopy(userlist)
+        for jcw in self.gamingUser:
+            del templist[jcw]
+        aa = [aa, templist]
         senddata = json.dumps(aa)
         for i in aa:
-            userlist[i][0].send(f'Gr!*!:!*!{senddata}*'.encode())
+            userlist[i][0].send(f'Gr!*!:!*!{senddata}@'.encode())
         print('게임방 유저 보낸다~')
         print(self.gameroom)
+
+
 class TCPhandler(socketserver.BaseRequestHandler):
     userManager = UserManager()  # 유저 클래스 선언
     gameServer = gameserver()
@@ -155,10 +165,14 @@ class TCPhandler(socketserver.BaseRequestHandler):
                         self.userManager.dongre()
                 elif Cmsg[0] == 'Gr':
                     if Cmsg[2][-1:] == '@':
-                        self.gameServer.entranceRoom(Cmsg[1], Cmsg[2][:-1])
-                        self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users)
+                        print('fffffffffffffffff')
+                        if self.gameServer.entranceRoom(Cmsg[1], Cmsg[2][:-1]):
+                            self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users)
+                        else:
+                            self.request.send(f'Gr!*!:!*!!!!!'.encode())
+                            print('ffffffffffffffff')
                     elif Cmsg[2][-1:] == '#':
-                        print('s나감')
+                        print('나감')
                         self.gameServer.exitRoom(Cmsg[1], Cmsg[2][:-1])
                         self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users)
                 msg = self.request.recv(1024)  # 메시지 수신 대기

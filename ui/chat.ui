@@ -542,7 +542,7 @@
       <string>보내기</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="CHAT_BT_close2">
+    <widget class="QPushButton" name="gr_roomclose">
      <property name="geometry">
       <rect>
        <x>30</x>
@@ -664,7 +664,7 @@
     <widget class="QPushButton" name="game_initebt">
      <property name="geometry">
       <rect>
-       <x>30</x>
+       <x>140</x>
        <y>330</y>
        <width>71</width>
        <height>31</height>
@@ -690,7 +690,7 @@
     <widget class="QLabel" name="gr_people">
      <property name="geometry">
       <rect>
-       <x>540</x>
+       <x>680</x>
        <y>30</y>
        <width>56</width>
        <height>12</height>
@@ -716,7 +716,7 @@
     <widget class="QLabel" name="gr_people_2">
      <property name="geometry">
       <rect>
-       <x>490</x>
+       <x>630</x>
        <y>30</y>
        <width>56</width>
        <height>12</height>
@@ -724,6 +724,45 @@
      </property>
      <property name="text">
       <string>인원</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="gr_people_3">
+     <property name="geometry">
+      <rect>
+       <x>490</x>
+       <y>30</y>
+       <width>56</width>
+       <height>12</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>게임종류</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="gr_gamename">
+     <property name="geometry">
+      <rect>
+       <x>550</x>
+       <y>30</y>
+       <width>56</width>
+       <height>12</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>인원</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="game_renewal">
+     <property name="geometry">
+      <rect>
+       <x>30</x>
+       <y>330</y>
+       <width>71</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>새로고침</string>
      </property>
     </widget>
    </widget>
