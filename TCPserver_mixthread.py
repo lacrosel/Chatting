@@ -13,6 +13,7 @@ class UserManager:  # 유저 컨트롤용 클래스
     def __init__(self):
         self.users = {}  # 유저 데이터 수집용
         self.Ninviteuser = []
+
     def addUser(self, username, cl_sock, addr):
         if username in self.users:
             # 받은 유저네임이 이미 존재하면
@@ -35,7 +36,7 @@ class UserManager:  # 유저 컨트롤용 클래스
         for name in self.users.keys():  # 키값이 username으로 채팅방에서 참여인원 출력용
             userList.append(name)
         print(userList)
-        ulist = 'L!*!:!*!' + json.dumps(userList)+'c'  # json.dump메서드를 이용해서 리스트 바이너리화
+        ulist = 'L!*!:!*!' + json.dumps(userList) + 'C'  # json.dump메서드를 이용해서 리스트 바이너리화
         self.sendMessageToAll(ulist)
         '''
         참여인원 누구인지 확인용 아직 ui로 안해서 json으로 키값 자체 전송해도 ui에서 표현가능
@@ -46,23 +47,15 @@ class UserManager:  # 유저 컨트롤용 클래스
         # 삭제하려는 ID가 없으면 아무일도 안함.
         if username not in self.users:
             return
-
         lock.acquire()  # Lock
         del self.users[username]  # Dictionary에서 아이디에 해당하는 항목 삭제
-
         lock.release()  # Unlock
 
         self.sendMessageToAll('C!*!:!*! [ %s ]님이 퇴장했습니다.' % username)
         time.sleep(0.001)
         print('▷ 대화 참여자 수 [%d]' % len(self.users))
-        userList = []  # 참여인원 누구인지
-        for name in self.users.keys():  # 키값이 username으로 채팅방에서 참여인원 출력용
-            userList.append(name)
-        print(userList)
-        ulist = 'L!*!:!*!' + json.dumps(userList)+'c'  # json.dump메서드를 이용해서 리스트 바이너리화
-        self.sendMessageToAll(ulist)
 
-    def gamesignal(self, to, msg):
+    def gamesignal(self, to, msg):  # 이걸로 귓속말 가능
         sock = self.users[to][0]
         sock.send(msg)
 
@@ -70,7 +63,6 @@ class UserManager:  # 유저 컨트롤용 클래스
         if msg[1].strip() == 'E!X@I#T%':  # 클라가 특정 문자(신호) 보내면 disconnect으로 인식해서
             self.removeUser(username)  # 클라리스트에서 삭제
             return -1  # server 클래스에서 접속해제 확인용 신호 전달
-
         self.sendMessageToAll(f'{msg[0]}!*!:!*![%s] %s' % (username, msg[1]))  # send메서드 호출
 
     def sendMessageToAll(self, msg):  # 접속한 모두에게 메시지 보내는 메서드
@@ -78,26 +70,27 @@ class UserManager:  # 유저 컨트롤용 클래스
         for cl_sock, addr in self.users.values():
             cl_sock.send(msg.encode())  # 각각의 사용자에게 메시지 전송
 
-    def dongGameset(self, msg):
-        Cmsg = msg.decode().split('!*!:!*!')
-        sendlist = []
-        for i in range(5):
-            a = random.randint(50, int(Cmsg[2]) - 50)
-            b = random.randint(3, 9)
-            sendlist.append([a, b])
-        print('qhsosek', sendlist)
-        slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
-        self.users['qwe'][0].send(slist.encode())
-        self.users['asd'][0].send(slist.encode())
-        return slist
-
-    def dongre(self):
-        a = random.randint(50, 600 - 50)
-        b = random.randint(3, 9)
-        sendlist = [a, b]
-        slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
-        self.users['qwe'][0].send(slist.encode())
-        self.users['asd'][0].send(slist.encode())
+    # def dongGameset(self, msg):
+    #     Cmsg = msg.decode().split('!*!:!*!')
+    #     sendlist = []
+    #     for i in range(5):
+    #         a = random.randint(50, int(Cmsg[2]) - 50)
+    #         b = random.randint(3, 9)
+    #         sendlist.append([a, b])
+    #     print('qhsosek', sendlist)
+    #     slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
+    #     self.users['qwe'][0].send(slist.encode())
+    #     self.users['asd'][0].send(slist.encode())
+    #     return slist
+    #
+    # def dongre(self):
+    #     a = random.randint(50, 600 - 50)
+    #     b = random.randint(3, 9)
+    #     sendlist = [a, b]
+    #     slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
+    #     self.users['qwe'][0].send(slist.encode())
+    #     self.users['asd'][0].send(slist.encode())
+    #
 
 
 class gameserver:
@@ -105,10 +98,22 @@ class gameserver:
         self.gameroom = {}
         self.gamingUser = []
 
-    def entranceRoom(self, user, roomname):
+    def createRoom(self, user, roomname):  # 방 생성
+        if roomname in self.gameroom.keys():  # 이미 같은 이름의 방 존재시 리턴 F
+            return False
         try:
-            if roomname in self.gameroom.keys():
-                return False
+            self.gameroom[roomname].append(user)  # 기존에 방 존재시 해당 딕셔너리 값에 유저 이름 추가
+            print(self.gameroom)
+        except KeyError:
+            self.gameroom[roomname] = []  # 기존에 방이 없어서 키값 에러 뜨면 방이름을 키값으로 하는 데이터 추가
+            self.gameroom[roomname].append(user)
+            print(self.gameroom)
+        # 방이름을 키값으로 하고 그 안에 리스트형태로 해당 방에 입장한 유저이름을 밸류값으로 저장된다.
+        self.gamingUser.append(user)  # 게임방에 입장한 유저 데이터에 유저 이름 추가
+        return True
+
+    def entranceRoom(self, user, roomname):  # 게임방 입장
+        try:
             self.gameroom[roomname].append(user)
             print(self.gameroom)
         except KeyError:
@@ -116,26 +121,34 @@ class gameserver:
             self.gameroom[roomname].append(user)
             print(self.gameroom)
         self.gamingUser.append(user)
-        return True
+        # 사실 방 입장은 기존에 생성된 방에 들어가는거라 키값에러가 뜰 이유가 없지만 방생성 메서드를 복붙..
 
-    def exitRoom(self, user, roomname):
-        self.gameroom[roomname].remove(user)
-        self.gamingUser.remove(user)
-        if len(self.gameroom[roomname]) == 0:
-            del self.gameroom[roomname]
+    def exitRoom(self, user, roomname):  # 방 퇴장
+        self.gameroom[roomname].remove(user)  # 해당 게임방에서 유저 이름 삭제
+        self.gamingUser.remove(user)  # 게임방에 입장한 유저리스트에서 유저 이름 삭제
+        if len(self.gameroom[roomname]) == 0:  # 유저 이름을 삭제후에 해당 게임방에 유저가 존재하지 않는경우
+            del self.gameroom[roomname]  # 게임방 삭제
         print(self.gameroom)
-    def RoomUserlist(self, roomname, userlist):
-        aa = self.gameroom[roomname]
-        templist = copy.deepcopy(userlist)
-        for jcw in self.gamingUser:
-            del templist[jcw]
-        aa = [aa, templist]
-        senddata = json.dumps(aa)
-        for i in aa:
-            userlist[i][0].send(f'Gr!*!:!*!{senddata}@'.encode())
+
+    def RoomUserlist(self, roomname, userlist, check):  # 해당 게임방에 입장한 유저확인
+        try:
+            aa = self.gameroom[roomname]
+        except KeyError:
+            return
+        invitelist = list(userlist.keys())  # 초대 가능한 인원 확인 위한 리스트 생성
+        for jcw in self.gamingUser:  # 어떠한 게임방에라도 입장한 유저 확인
+            invitelist.remove(jcw)  # 해당 유저이름 초대목록에서 삭제
+        temp = [aa, invitelist]
+        print(temp)
+        senddata = json.dumps(temp)  # 리스트 형태로 전송.
+        if check == 0:  # 게임방 생성시에
+            for i in aa:
+                userlist[i][0].send(f'Gr!*!:!*!{senddata}@'.encode())
+        elif check == 1:  # 게임방 생성 외 갱신 요청시
+            for i in aa:
+                userlist[i][0].send(f'Gr!*!:!*!{senddata}%'.encode())
         print('게임방 유저 보낸다~')
         print(self.gameroom)
-
 
 class TCPhandler(socketserver.BaseRequestHandler):
     userManager = UserManager()  # 유저 클래스 선언
@@ -144,6 +157,12 @@ class TCPhandler(socketserver.BaseRequestHandler):
     def setup(self):
         self.username = self.registerUsername()  # 사용자 id 처리
 
+        D1 = list(self.userManager.users.keys())
+        D2 = list(self.gameServer.gameroom.keys())
+
+        ulist = 'L!*!:!*!' + json.dumps([D1, D2]) + 'C'
+        self.userManager.sendMessageToAll(ulist)
+
     def handle(self):  # 클라에서 신호 보낼시 자동으로 동작
         try:
             msg = self.request.recv(1024)  # 접속된 사용자로부터 입력대기
@@ -151,30 +170,41 @@ class TCPhandler(socketserver.BaseRequestHandler):
                 # print(msg.decode())  # 서버 화면에 출력
                 Cmsg = msg.decode().split('!*!:!*!')
                 print('Cmsg', Cmsg)
-                if Cmsg[0] == 'C':
+                if Cmsg[0] == 'C':  # 일반채팅
                     if self.userManager.messageHandler(self.username, Cmsg) == -1:
                         self.request.close()  # disConnection
                         break  # recv 종료
-                elif Cmsg[0] == 'G':
-                    self.userManager.gamesignal(Cmsg[2], msg)
-                elif Cmsg[0] == 'Gc':
-                    if Cmsg[1] == 'dongset' and Cmsg[3] == '1':
-                        slist = self.userManager.dongGameset(msg)
-                        # self.request.send(slist.encode())
-                    elif Cmsg[1] == 'redong' and Cmsg[2][1] == '1':
-                        self.userManager.dongre()
-                elif Cmsg[0] == 'Gr':
-                    if Cmsg[2][-1:] == '@':
+                elif Cmsg[0] == 'L':  # 메인페이지 갱신요청
+                    D1 = list(self.userManager.users.keys())
+                    D2 = list(self.gameServer.gameroom.keys())
+
+                    ulist = 'L!*!:!*!' + json.dumps([D1, D2]) + 'C'
+                    self.request.send(ulist.encode())
+                # elif Cmsg[0] == 'G':
+                #     self.userManager.gamesignal(Cmsg[2], msg)
+                # elif Cmsg[0] == 'Gc':  #똥겜
+                #     if Cmsg[1] == 'dongset' and Cmsg[3] == '1':
+                #         slist = self.userManager.dongGameset(msg)
+                #         # self.request.send(slist.encode())
+                #     elif Cmsg[1] == 'redong' and Cmsg[2][1] == '1':
+                #         self.userManager.dongre()
+                elif Cmsg[0] == 'Gr':  # gameroom 관련
+                    if Cmsg[2][-1:] == '@':  # 게임방 생성 요청
                         print('fffffffffffffffff')
-                        if self.gameServer.entranceRoom(Cmsg[1], Cmsg[2][:-1]):
-                            self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users)
+                        if self.gameServer.createRoom(Cmsg[1], Cmsg[2][:-1]):
+                            self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users, 0)
                         else:
                             self.request.send(f'Gr!*!:!*!!!!!'.encode())
-                            print('ffffffffffffffff')
-                    elif Cmsg[2][-1:] == '#':
+                            print('eeeeeeeeeeee')
+                    elif Cmsg[2][-1:] == '#':  # 게임방 퇴장 요청
                         print('나감')
                         self.gameServer.exitRoom(Cmsg[1], Cmsg[2][:-1])
-                        self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users)
+                        self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users, 1)
+                    elif Cmsg[2][-1:] == '$':  # 게임방 입장 요청
+                        self.gameServer.entranceRoom(Cmsg[1], Cmsg[2][:-1])
+                        self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users, 1)
+                    elif Cmsg[2][-1:] == '%':  # 게임방 내 데이터 갱신 요청
+                        self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users, 1)
                 msg = self.request.recv(1024)  # 메시지 수신 대기
 
         except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.
@@ -182,6 +212,13 @@ class TCPhandler(socketserver.BaseRequestHandler):
 
         print('▷ [%s] disConnection' % self.client_address[0])
         self.userManager.removeUser(self.username)  # 클라 삭제처리
+
+        D1 = list(self.userManager.users.keys())
+        D2 = list(self.gameServer.gameroom.keys())
+
+        ulist = 'L!*!:!*!' + json.dumps([D1, D2]) + 'C'
+        self.userManager.sendMessageToAll(ulist)
+
 
     def registerUsername(self):  # 접속자의 이름 받기
         while True:
@@ -200,9 +237,8 @@ class ChatingServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass  # 이건 단순하게 스레드 동작 하게 한다는 거니까 특별히 뭘 적어줄 필요 x
 
 
-
 if __name__ == "__main__":
-    address = ("10.10.21.106", 9009)
+    address = ("192.168.0.76", 9009)
 
     print('▷ 채팅 서버를 시작합니다.')
     print('▷ 채팅 서버를 끝내려면 Ctrl-C를 누르세요.')
