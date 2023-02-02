@@ -32,7 +32,7 @@ class UserManager:  # 유저 컨트롤용 클래스
         lock.release()  # Unlock
 
         # 모든 사용자에게 메시지 전송
-        self.sendMessageToAll('C!*!:!*! [%s]님이 입장했습니다.' % username)
+        self.sendMessageToAll('C!*!:!*! [%s]님이 입장했습니다.C' % username)
         time.sleep(0.01)
         print('▷ 대화 참여자 수 [%d]' % len(self.users))
         # userList = []  # 참여인원 누구인지
@@ -54,7 +54,7 @@ class UserManager:  # 유저 컨트롤용 클래스
         del self.users[username]  # Dictionary에서 아이디에 해당하는 항목 삭제
         lock.release()  # Unlock
 
-        self.sendMessageToAll('C!*!:!*! [ %s ]님이 퇴장했습니다.' % username)
+        self.sendMessageToAll('C!*!:!*! [ %s ]님이 퇴장했습니다.C' % username)
         time.sleep(0.001)
         print('▷ 대화 참여자 수 [%d]' % len(self.users))
 
@@ -64,7 +64,7 @@ class UserManager:  # 유저 컨트롤용 클래스
         sock.send(senddata.encode())
 
     def messageHandler(self, username, msg):
-        if msg[1].strip() == 'E!X@I#T%':  # 클라가 특정 문자(신호) 보내면 disconnect으로 인식해서
+        if msg[1][:-1].strip() == 'E!X@I#T%':  # 클라가 특정 문자(신호) 보내면 disconnect으로 인식해서
             self.removeUser(username)  # 클라리스트에서 삭제
             return -1  # server 클래스에서 접속해제 확인용 신호 전달
         db = pymysql.connect(host='10.10.21.106', port=3306, user='root', password='1q2w3e4r', charset='utf8')
@@ -73,12 +73,11 @@ class UserManager:  # 유저 컨트롤용 클래스
         datas = now.strftime('%Y-%m-%d')
         times = now.strftime('%H:%M:%S')
         check = cursor.execute(f"INSERT INTO chatserver.mainchat(sender, msg, dates, times) "
-                               f"VALUES('{str(username)}','{str(msg[1])}', DATE_FORMAT(now(), '%Y-%m-%d'), DATE_FORMAT(now(), '%H-%m-%s'))")
+                               f"VALUES('{str(username)}','{str(msg[1][:-1])}', DATE_FORMAT(now(), '%Y-%m-%d'), DATE_FORMAT(now(), '%H-%m-%s'))")
         # self.UserInfo = cursor.fetchone()
         db.commit()
         db.close()
         self.sendMessageToAll(f'{msg[0]}!*!:!*![%s] %s' % (username, msg[1]))  # send메서드 호출
-
 
     def sendMessageToAll(self, msg):  # 메인쳇 접속한 모두에게 메시지 보내는 메서드
         # Dictionary 값 2개 추출: client_sock, IP로 구성된 tuple 값 위에서 설명함.
@@ -213,9 +212,23 @@ class TCPhandler(socketserver.BaseRequestHandler):
                 Cmsg = msg.decode().split('!*!:!*!')
                 print('Cmsg', Cmsg)
                 if Cmsg[0] == 'C':  # 일반채팅
-                    if self.userManager.messageHandler(self.username, Cmsg) == -1:
-                        self.request.close()  # disConnection
-                        break  # recv 종료
+                    if Cmsg[1][-1] == 'C':  # 일반채팅
+                        if self.userManager.messageHandler(self.username, Cmsg) == -1:
+                            self.request.close()  # disConnection
+                            break  # recv 종료
+                    elif Cmsg[1][-1] == 'L':  # 일반채팅 로그요청
+                        db = pymysql.connect(host='10.10.21.106', port=3306, user='root', password='1q2w3e4r',
+                                             charset='utf8')
+                        cursor = db.cursor()
+                        check = cursor.execute(f"SELECT sender, msg "
+                                               f"FROM chatserver.mainchat "
+                                               f"WHERE dates LIKE '{Cmsg[1][:7]}%' ORDER BY dates DESC, times DESC")
+                        chatlog = cursor.fetchall()
+                        db.close()
+                        if check > 0:
+                            chatlog = json.dumps([chatlog, Cmsg[1][:7]])
+                            senddata = 'C!*!:!*!' + chatlog + 'L'
+                            self.request.send(senddata.encode())
                 elif Cmsg[0] == 'L':  # 메인페이지 갱신요청
                     userlist = list(self.userManager.users.keys())  # 유저리스트
                     roomname = list(self.gameServer.gameroom.keys())  # 게임방리스트

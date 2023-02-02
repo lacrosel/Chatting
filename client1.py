@@ -6,6 +6,8 @@ import pyautogui
 from PyQt5 import uic
 from PyQt5.QtCore import QThread
 from PyQt5.QtWidgets import *
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import pygame
 import json
 import random
@@ -23,11 +25,14 @@ class Cclient(QWidget, testui):
         self.show()
         self.CHAT_STACK.setCurrentIndex(3)
         self.running = False
+        self.logSignal = 0
+        self.now = datetime.now()
         self.F_gamecreate.hide()
         self.F_gameinvite.hide()
         self.F_alert.hide()
         self.alert_close.clicked.connect(lambda: self.F_alert.hide())
 
+        self.listWidget.doubleClicked.connect(lambda: self.chatLog(0, 0))
         self.gr_roomclose.clicked.connect(lambda: self.pageReset(1))
         self.create_cancel.clicked.connect(lambda: self.pageReset(2))
         self.create_agree.clicked.connect(self.gameRoom_create)
@@ -48,6 +53,31 @@ class Cclient(QWidget, testui):
         self.CHAT_timeExit.clicked.connect(self.CHAT_exit)
 
         # self.CHAT_game.clicked.connect(self.test)
+
+    def chatLog(self, signal, data):
+        if signal == 0:
+            if self.listWidget.currentRow() == 0:
+                self.logSignal += 1
+                self.listWidget.insertItem(0, '=========================================') #맨 앞에 추가하기.
+                #logsignal횟수-1만큼 현재 달에서 빼준 달의 데이터 요청할 것.
+
+
+                check = self.now - relativedelta(months=self.logSignal-1)
+                print(check.strftime('%Y-%m-%d'))
+                msg = 'C!*!:!*!' + str(check.strftime('%Y-%m-%d')) + 'L'
+                self.sock.send(msg.encode())
+        elif signal == 1:
+            check = self.now - relativedelta(months=0)
+            check=check.strftime('%Y-%m')
+            if check == data[1]:
+                self.listWidget.clear()
+
+            for row in range(len(data[0])):
+                self.listWidget.insertItem(0, f'[{data[0][row][0]}] {data[0][row][1]}') #맨 앞에 추가하기.
+            self.listWidget.insertItem(0, f'@@  {data[1]}  메세지 @@')  # 맨 앞에 추가하기.
+
+
+
 
     def userinvite(self, signal, data):
         if signal == 0:
@@ -104,7 +134,7 @@ class Cclient(QWidget, testui):
                                             QTableWidgetItem(str(ulist[1][row][3]) + ' / ' + str(ulist[1][row][2])))
 
     def sendMsg(self):  # 채팅 msg 보내기
-        message = 'C' + '!*!:!*!' + self.CHAT_LE_tsend.text()
+        message = 'C' + '!*!:!*!' + self.CHAT_LE_tsend.text() + 'C'
         if self.CHAT_LE_tsend.text() == "" or self.CHAT_LE_tsend.text() is None:
             return
         self.sock.send(message.encode())
@@ -127,8 +157,12 @@ class Cclient(QWidget, testui):
                 elif msg[1] == 'O':
                     self.CHAT_STACK.setCurrentIndex(1)
             if msg[0] == 'C':  # 일반 채팅 식별문자
-                self.listWidget.addItem(msg[1])
-                self.scollcheck(0)
+                if msg[1][-1] == 'C':
+                    self.listWidget.addItem(msg[1][:-1])
+                    self.scollcheck(0)
+                elif msg[1][-1] == 'L':
+                    chatlogdata = json.loads(msg[1][:-1])
+                    self.chatLog(1, chatlogdata)
             # if msg[0] == 'G':
             #     print(msg)
             #     if msg[1] == 'right':
@@ -234,7 +268,7 @@ class Cclient(QWidget, testui):
 
     def CHAT_exit(self):  # 메인채팅 퇴장
         self.running = False
-        message = 'C' + '!*!:!*!' + 'E!X@I#T%'
+        message = 'C' + '!*!:!*!' + 'E!X@I#T%C'
         print("asd")
         self.sock.send(message.encode())
         time.sleep(1)
