@@ -4,7 +4,10 @@ import threading
 import time
 import random
 import copy
+from datetime import datetime
+
 import pygame
+import pymysql
 
 lock = threading.Lock()  # lock 선언
 
@@ -64,7 +67,18 @@ class UserManager:  # 유저 컨트롤용 클래스
         if msg[1].strip() == 'E!X@I#T%':  # 클라가 특정 문자(신호) 보내면 disconnect으로 인식해서
             self.removeUser(username)  # 클라리스트에서 삭제
             return -1  # server 클래스에서 접속해제 확인용 신호 전달
+        db = pymysql.connect(host='10.10.21.106', port=3306, user='root', password='1q2w3e4r', charset='utf8')
+        cursor = db.cursor()
+        now = datetime.now()
+        datas = now.strftime('%Y-%m-%d')
+        times = now.strftime('%H:%M:%S')
+        check = cursor.execute(f"INSERT INTO chatserver.mainchat(sender, msg, dates, times) "
+                               f"VALUES('{str(username)}','{str(msg[1])}', DATE_FORMAT(now(), '%Y-%m-%d'), DATE_FORMAT(now(), '%H-%m-%s'))")
+        # self.UserInfo = cursor.fetchone()
+        db.commit()
+        db.close()
         self.sendMessageToAll(f'{msg[0]}!*!:!*![%s] %s' % (username, msg[1]))  # send메서드 호출
+
 
     def sendMessageToAll(self, msg):  # 메인쳇 접속한 모두에게 메시지 보내는 메서드
         # Dictionary 값 2개 추출: client_sock, IP로 구성된 tuple 값 위에서 설명함.
