@@ -15,7 +15,7 @@ lock = threading.Lock()  # lock 선언
 class UserManager:  # 유저 컨트롤용 클래스
     def __init__(self):
         self.users = {}  # 유저 데이터 수집용
-        self.outname = []
+        self.Ninviteuser = []
 
     def addUser(self, username, cl_sock, addr):
         if username in self.users:
@@ -84,78 +84,11 @@ class UserManager:  # 유저 컨트롤용 클래스
         for cl_sock, addr in self.users.values():
             cl_sock.send(msg.encode())  # 각각의 사용자에게 메시지 전송
 
-    def gamechatToAll(self, msg, sender, userList, userInfo, signal):
-        if signal == 0:
-            for user in userList:
-                cl_sock, addr = userInfo[user]
-                cl_sock.send((f'Gr!*!:!*![%s] %sC' % (sender, msg)).encode())  # 각각의 사용자에게 메시지 전송
-        elif signal == 1:
-            for user in userList:
-                cl_sock, addr = userInfo[user]
-                cl_sock.send((f'JG!*!:!*!%s%s' % (sender, msg)).encode())
-        elif signal == 2:
-            for user in userList:
-                cl_sock, addr = userInfo[user]
-                cl_sock.send((f'JG!*!:!*!%sS' % (sender)).encode())
-                return
-        elif signal == 3: #여기서 sender는 순서를 체크해주기 위한 변수로 사용된다.
-            # n = '이'
-            # u = ['정', '강', '이']
-            # t = u.index(n)
-            # t = (t + 1) % len(u)
-            IDX = userList.index(sender)
-            TURN = (IDX+1) % len(userList)
+    def gamechatToAll(self, msg, sender, userList, userInfo):
+        for user in userList:
+            cl_sock, addr = userInfo[user]
+            cl_sock.send((f'Gr!*!:!*![%s] %sC' % (sender, msg)).encode())  # 각각의 사용자에게 메시지 전송
 
-            for user in userList:
-                cl_sock, addr = userInfo[user]
-                if userList[TURN] == user:
-                    cl_sock.send((f'JG!*!:!*!%sY' % (msg)).encode())
-                else:
-                    cl_sock.send((f'JG!*!:!*!%sJ' % (msg)).encode())
-
-            #누구 턴인지 그 사람한테는 추가로 보내줘야돼.
-
-
-
-
-class Bingoclass():
-    count = 0
-    count2 = 0
-    bingcount = 0
-
-    def bingocount(self, count):
-        self.bingcount = count
-
-    def bingo(self, username, users):
-        for cl_sock, addr in users.values():
-            msg = '!?start?!'
-            usercount = 0
-            for i in username:
-                usercount += 1
-                user, user2 = users[i]
-                if user == cl_sock:
-                    print(user, cl_sock, "!!!!@!@!@")
-                    cl_sock.send(msg.encode())  # 각각의 사용자에게 메시지 전송
-                    msg = str(usercount)
-                    cl_sock.send(msg.encode())
-
-                # elif user == cl_sock:
-                #     print("!")
-
-    def bingostart(self, username, users, request):
-        nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-        random.shuffle(nums)
-        self.bingcount = 0
-        for j in nums:
-            # time.sleep(1)
-            if self.bingcount == 0:
-                print("작동중")
-                for cl_sock, addr in users.values():
-                    for i in username:
-                        user, user2 = users[i]
-                        if user == cl_sock:
-                            # print(user, cl_sock, "!!!!@!@!@")
-                            cl_sock.send(str(j).encode())  # 각각의 사용자에게 메시지 전송
     # def dongGameset(self, msg):
     #     Cmsg = msg.decode().split('!*!:!*!')
     #     sendlist = []
@@ -182,10 +115,9 @@ class Bingoclass():
 class gameserver:
     def __init__(self):
         self.gameroom = {}  # 게임방 유저정보 키:방이름 밸류:유저리스트
-        self.gameroomInfo = {}  # 게임방 설정정보 키:방이름 밸류:[게임종류, 인원, 상태]
-        self.readyUser = {}  # 키:게임방이름 밸류:ready 누른 유저이름
+        self.gameroomInfo = {}  # 게임방 설정정보 키:방이름 밸류:[게임종류, 인원]
         self.gamingUser = []  # 게임 입장 유저 리스트  (아 gameroom.values() 하면 되네)
-        self.gamin_ing_room = {}
+
     def createRoom(self, user, roomInfo):  # 방 생성
         # roomInfo = [방이름, 게임종류, 최대인원]
         if roomInfo[0] in self.gameroom.keys():  # 이미 같은 이름의 방 존재시 리턴 F
@@ -195,7 +127,6 @@ class gameserver:
             print(self.gameroom)  # 방 생성이기 때문에 기존에 방 존재할 이유가 없지만 혹시 모르는 안전장치
         except KeyError:
             self.gameroom[roomInfo[0]] = []  # 기존에 방이 없어서 키값 에러 뜨면 방이름을 키값으로 하는 데이터 추가
-            self.readyUser[roomInfo[0]] = []
             self.gameroom[roomInfo[0]].append(user)
             self.gameroomInfo[roomInfo[0]] = [roomInfo[1], roomInfo[2]]
             # 방정보 -> 이름을 키값으로 밸류에는 게임 종류와 최대인원 정보
@@ -207,11 +138,12 @@ class gameserver:
     def entranceRoom(self, user, roomname):  # 게임방 입장
 
         try:
-            if int(self.gameroomInfo[roomname][1][0]) > int(len(self.gameroom[roomname])) and roomname not in self.gamin_ing_room:
+            if int(self.gameroomInfo[roomname][1][0]) > int(len(self.gameroom[roomname])):
                 self.gameroom[roomname].append(user)
                 print(self.gameroom)
             else:
                 return False
+
         except KeyError:
             return
         self.gamingUser.append(user)
@@ -223,7 +155,6 @@ class gameserver:
         self.gamingUser.remove(user)  # 게임방에 입장한 유저리스트에서 유저 이름 삭제
         if len(self.gameroom[roomname]) == 0:  # 유저 이름을 삭제후에 해당 게임방에 유저가 존재하지 않는경우
             del self.gameroom[roomname]  # 게임방 삭제
-            del self.readyUser[roomname]
             del self.gameroomInfo[roomname]  # 게임방 정보 삭제
         print(self.gameroom)
 
@@ -253,30 +184,16 @@ class gameserver:
                 userlist[i][0].send(f'Gr!*!:!*!{senddata}%'.encode())
         print('게임방 유저 보낸다~')
         print(self.gameroom)
-    def gamestart_checker(self, userList, roomName, userName):
-        #1.레디 누르사람 리스트 만들고 append 2. 그 방의 인원 체크해서 모든 사람이 레디 눌럿는지 확인.
-        #해당 방에 접속한 유저에게 게임 시작 신호 전송 이왕이면  턴 순서까지?
-        #게임스타트 신호 보낸 후에 게임 진행중인 방리스트에 추가해서 게임 진행중에 다른 유저 접속 차단
-        self.readyUser[roomName].append(userName)
-        print('tt', self.readyUser)
-        if len(self.gameroom[roomName]) == len(self.readyUser[roomName]) and len(self.gameroom[roomName]) > 1:   #방 참가자 모두 ready
-            self.gamin_ing_room[roomName] = -1
-            return True
-        else:
-            return False
 
-        # 게임방에 들어있는 사람 모두가 레디 신호 보내면 게임 스타트 신호 전달
-    def deleteready(self, roomName, userName):
-        self.readyUser[roomName].remove(userName)
 
 class TCPhandler(socketserver.BaseRequestHandler):
     userManager = UserManager()  # 유저 클래스 선언
     gameServer = gameserver()
-    bingoclass = Bingoclass()
 
     def setup(self):
         self.username = self.registerUsername()  # 사용자 id 처리
         self.List_mainInfo()
+
 
     def handle(self):  # 클라에서 신호 보낼시 자동으로 동작
         try:
@@ -339,7 +256,7 @@ class TCPhandler(socketserver.BaseRequestHandler):
                     if Cmsg[2][-1] == 'C':
                         Tmsg = Cmsg[1].split('%@%')
                         self.userManager.gamechatToAll(Cmsg[2][:-1], Tmsg[1], self.gameServer.gameroom[Tmsg[0]],
-                                                       self.userManager.users, 0)
+                                                       self.userManager.users)
                         # 'Gr' + '!*!:!*!' + self.gr_sendtext.text() + 'C'
                     elif Cmsg[2][-1] == 'I':
                         Tmsg = Cmsg[1].split('!@#')
@@ -362,44 +279,6 @@ class TCPhandler(socketserver.BaseRequestHandler):
                             self.request.send('Gr!*!:!*!!!!*'.encode())  # 거절
                     elif Cmsg[2][-1:] == '%':  # 게임방 내 데이터 갱신 요청
                         self.gameServer.RoomUserlist(Cmsg[2][:-1], self.userManager.users, 2)
-                elif Cmsg[0] == 'JG':
-                    Tmsg = Cmsg[1].split('%@%')
-                    if Cmsg[2][-1] == 'R':
-                        self.userManager.gamechatToAll(Cmsg[2], Tmsg[1], self.gameServer.gameroom[Tmsg[0]],
-                                                       self.userManager.users, 1)
-                        if self.gameServer.gamestart_checker(self.userManager.users, Tmsg[0], Tmsg[1]):
-                            self.userManager.gamechatToAll(0, 0, self.gameServer.gameroom[Tmsg[0]],
-                                                       self.userManager.users, 2)
-                    elif Cmsg[2][-1] == 'T':
-                        self.userManager.gamechatToAll(Cmsg[2], Tmsg[1], self.gameServer.gameroom[Tmsg[0]],
-                                                       self.userManager.users, 1)
-                        self.gameServer.deleteready(Tmsg[0], Tmsg[1])
-                    elif Cmsg[2][-1] == 'J':
-                        self.userManager.gamechatToAll(Cmsg[2][:-1], Tmsg[1], self.gameServer.gameroom[Tmsg[0]],
-                                                       self.userManager.users, 3)
-                        #msg, sender, userList, userInfo, signal
-                elif Cmsg[0] == 'B':
-                    # print(Cmsg[1])
-                    self.userManager.outname.append(Cmsg[1])
-                elif Cmsg[0] == 'O':
-                    self.userManager.outname.remove(Cmsg[1])
-                    print(self.userManager.outname, "!!!!!!!!!")
-                elif Cmsg[0] == 'BS':
-                    self.bingoclass.count += 1  # 게임시작버튼 누르면 올라감
-                    if self.bingoclass.count == 2:  # 두명 누르면 시작
-                        self.bingoclass.bingo(self.userManager.outname, self.userManager.users)
-                elif Cmsg[0] == 'ready':
-                    # print(Cmsg[0],"!!!!!!!!!!!!!!!!!!!!!!!")
-                    self.bingoclass.count2 += 1
-                    if self.bingoclass.count2 == 2:  # 두명 준배완료
-                        self.bingoclass.bingostart(self.userManager.outname, self.userManager.users, self.request)
-                elif Cmsg[0] == '!@!win!@!':
-                    print("wfs")
-                    wincount = 1
-                    # self.bingoclass.bingocount(wincount)
-                elif Cmsg[0] == '!@!no!@!':
-                    print("rwfs")
-
                 msg = self.request.recv(1024)  # 메시지 수신 대기
 
         except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.

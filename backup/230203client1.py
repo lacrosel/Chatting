@@ -8,8 +8,6 @@ from PyQt5.QtCore import QThread
 from PyQt5.QtWidgets import *
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from collections import Counter
-from PyQt5 import QtGui
 # import pygame
 import json
 import random
@@ -31,31 +29,9 @@ class Cclient(QWidget, testui):
         self.now = datetime.now()
         self.F_gamecreate.hide()
         self.F_gameinvite.hide()
-        self.gr_alert.hide()
-        self.gr_in.hide()
         self.F_alert.hide()
-        self.F_alert2.hide()
-        self.j_gameready = False
         self.alert_close.clicked.connect(lambda: self.F_alert.hide())
-        self.alert_close2.clicked.connect(lambda: self.F_alert2.hide())
-        #####
-        self.count = 0
-        self.count2 = 0
-        self.num = []
-        self.bingob.clicked.connect(lambda: self.mov(2))
-        self.bingochat.returnPressed.connect(lambda: self.bingoins(0))
-        self.startb.clicked.connect(self.bingostart)
-        self.CHAT_BT_close_2.clicked.connect(self.back)
-        self.CHAT_BT_send.clicked.connect(lambda: self.bingoins(1))
 
-
-
-        self.game_startset.clicked.connect(lambda: self.j_bingoStart(0))
-        self.game_rand.clicked.connect(lambda: self.j_bingoset(1))
-        self.game_startbt.clicked.connect(lambda: self.j_bingoStart(1))
-        self.gr_selectnum.returnPressed.connect(lambda: self.j_bingoselect(2,False))
-############
-        ##################
         self.listWidget.doubleClicked.connect(lambda: self.chatLog(0, 0))
         self.gr_roomclose.clicked.connect(lambda: self.pageReset(1))
         self.create_cancel.clicked.connect(lambda: self.pageReset(2))
@@ -79,212 +55,6 @@ class Cclient(QWidget, testui):
 
         # self.CHAT_game.clicked.connect(self.test)
 
-
-    def j_bingoselect(self, signal, numS):
-        if signal == 0:  #필요 없어짐. 2번으로 대체됨.
-            # selectnum = self.gr_checknum.currentItem().text()
-            print('2')
-            # self.gr_checknum.takeItem(self.gr_checknum.currentRow())
-            # message = 'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + selectnum +'N'
-            # self.sock.send(message.encode())
-            #메시지로 보낼거
-        elif signal == 1:
-            try:
-                idx = self.rannum.index(int(numS))
-            except ValueError:
-                print('에러다 에러 숫자 없다.')
-                return
-            idx_row = idx // 5
-            idx_col = idx % 5
-            print(idx_row, ' == ', idx_col)
-            self.bingotable.item(idx_row, idx_col).setBackground(QtGui.QColor(100, 100, 150))
-            self.JDnum.remove(int(numS))
-            self.gr_unchecknum.addItem(str(numS))
-            self.gr_checknum.clear()
-            for nb in self.JDnum:
-                self.gr_checknum.addItem(str(nb))
-
-        elif signal == 2:
-            num = self.gr_selectnum.text()
-            self.gr_selectnum.clear()
-            try:
-                print("jcw", self.JDnum)
-                if int(num) not in self.JDnum or (int(num) > 25 and int(num) < 1):
-                    self.F_alert2.show()
-                    self.alert_text2.setText('숫자를 확인해주세요')
-                    return
-                print('보낸다 숫자!', num)
-                msg =  'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + num+'J'
-                self.sock.send(msg.encode())
-                self.gr_alert.hide()
-            except ValueError:
-                self.F_alert2.show()
-                self.alert_text2.setText('숫자를 입력해주세요')
-                return
-
-    def j_bingoStart(self, signal):
-        if signal == 0:
-            if self.j_gameready == False:
-                self.j_bingoset(0)
-                self.gr_in.show()
-                # self.game_startbt.setBackground(QtGui.QColor(222, 222, 222))
-                self.game_startset.hide()
-
-        elif signal == 1:
-            if self.j_gameready == False:       # 준비 신호 전송
-                rowcount = self.bingotable.rowCount()
-                colcount = self.bingotable.columnCount()
-                for i in range(0, rowcount):
-                    for j in range(0, colcount):
-                        data = self.bingotable.item(i, j)
-                        if data is not None:
-                            pass
-                        else:
-                            self.F_alert2.show()
-                            self.alert_text2.setText('빙고판을 채워주세요')
-                            return
-                self.j_gameready = True
-                self.game_rand.setEnabled(False)
-                self.gr_numinput.setEnabled(False)
-                #'Gr' + '!*!:!*!'
-                message = 'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + 'R'
-                self.sock.send(message.encode())
-            elif self.j_gameready == True:  #준비 해제 신호 전송
-                self.j_gameready = False
-                self.game_rand.setEnabled(True)
-                self.gr_numinput.setEnabled(True)
-                # self.game_startbt.setBackground(QtGui.QColor(100, 180, 222))
-                message = 'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + 'T'
-                self.sock.send(message.encode())
-        elif signal == 2:  # 게임 시작신호.
-            self.gr_in.hide()
-            self.gr_alert.show()
-
-
-    def back(self):
-        message = 'O' + '!*!:!*!' + self.name
-        self.sock.send(message.encode())
-        self.CHAT_STACK.setCurrentIndex(1)
-
-    def mov(self, num):
-        if num == 2:
-            message = 'B' + '!*!:!*!' + self.name
-            self.sock.send(message.encode())
-            self.CHAT_STACK.setCurrentIndex(0)
-            self.bingoset()
-
-    def bingoins(self, signal):
-        if signal == 0:
-            aa = self.bingochat.text()
-            if f'{aa}' not in self.num and int(aa) < 26:
-                print(f'{aa}', self.num)
-                self.count += 1
-                self.count2 += 1
-                self.num.append(self.bingochat.text())
-                self.bingochat.clear()
-                print("%d입력" % (self.count))
-            else:
-                print("다시입력")
-        elif signal == 1:
-            aa = self.bingochat.text()
-            print(aa)
-
-    def bingoset(self):
-        header = self.bing.horizontalHeader()
-        header2 = self.bing.verticalHeader()
-        for i in range(0, 5):
-            header.resizeSection(i, 79)
-            header2.resizeSection(i, 79)
-
-    def bingostart(self):
-        message = 'BS' + '!*!:!*!' + self.name
-        self.sock.send(message.encode())
-
-    def bingo(self):
-        count = 0
-        nums2 = []
-        nums4 = []
-        nums5 = []
-        self.count = 0
-        data = self.sock.recv(1024)
-        countnum = data.decode()
-        while (1):
-            print(self.count)
-            if self.count >= 25:
-                break
-        for i in range(0, 5):
-            for j in range(0, 5):
-                self.bing.setItem(i, j, QTableWidgetItem(str(self.num[count])))
-                count += 1
-        self.bingoset()
-        msg1 = 'ready' + '!*!:!*!' + self.name
-        self.sock.send(msg1.encode())
-        self.dic = {}
-        for k in range(0, 25):
-            self.dic[int(self.num[k])] = str(k)
-        print(self.dic)
-
-        count = 0
-        count2 = 0  # 벨류가 2인수
-        count3 = 0  # 빙고갯수
-        nums3 = []
-        for j in range(0, 25):
-            print("들어옴")
-            count += 1
-            data = self.sock.recv(1024)
-            nums = data.decode()
-            nums2.append(self.dic[int(nums)])
-            color = self.dic[int(nums)]
-            color1 = int(color) // 5
-            color2 = int(color) % 5
-            # print(color,color1,color2)
-            self.bing.item(color1, color2).setBackground(QtGui.QColor(100, 100, 150))
-            self.bingoset()
-            if count == 1:
-                for i in range(1, 6):
-                    nums3 = []
-                    nums5 = []
-                    for l in range(1, 6):
-                        count += 1
-                        nums3.append(str((5 * (i - 1) + l) - 1))
-                        nums5.append(str((i + (l - 1) * 5) - 1))
-                        # print(i,l,nums3)
-                    nums4 += nums3, nums5
-                nums4 += ['0', '6', '12', '18', '24'], ['4', '8', '12', '16', '20']
-            for m in nums4:
-                nums6 = nums2 + m
-                jung = Counter(nums6)
-                count2 = 0
-                # count3=0
-                for o in m:
-                    # if count3>=3:
-                    #     print("승리")
-                    #     break
-                    if jung[o] == 2:
-                        print(o, jung[o], count2, count3)
-                        count2 += 1
-                        if count2 == 5:
-                            count3 += 1
-                            nums4.remove(m)
-                            print(nums4, m)
-                            # print(o, jung[o], count2, count3,"!!!!!!!!!!")
-                if count3 >= 3:
-                    print("!!!1")
-                    break
-            time.sleep(int(countnum) / 10)
-            # print(countnum)
-            if count3 >= 3:
-                # time.sleep(int(countnum) / 100)
-                msg2 = '!@!win!@!' + '!*!:!*!' + self.name
-                self.sock.send(msg2.encode())
-                break
-            elif count3 < 3:
-                # time.sleep(int(countnum) / 100)
-                msg3 = '!@!no!@!' + '!*!:!*!' + self.name
-                self.sock.send(msg3.encode())
-                print("????")
-
-    ###################
     def chatLog(self, signal, data):
         if signal == 0:
             if self.listWidget.currentRow() == 0:
@@ -388,7 +158,7 @@ class Cclient(QWidget, testui):
                     break
                 elif msg[1] == 'O':
                     self.CHAT_STACK.setCurrentIndex(1)
-            elif msg[0] == 'C':  # 일반 채팅 식별문자
+            if msg[0] == 'C':  # 일반 채팅 식별문자
                 if msg[1][-1] == 'C':
                     self.listWidget.addItem(msg[1][:-1])
                     self.scollcheck(0)
@@ -412,7 +182,7 @@ class Cclient(QWidget, testui):
             #     elif msg[1] == 'redong':
             #         print('동이다')
             #         self.rposs = json.loads(msg[2])
-            elif msg[0] == 'Gr':  # 게임방 식별 문자
+            if msg[0] == 'Gr':  # 게임방 식별 문자
                 if msg[1][-1] == '!':  # 게임방 생성 불가
                     self.alert_text.setText('이미 존재하는 방입니다.')
                     self.F_alert.show()
@@ -438,31 +208,12 @@ class Cclient(QWidget, testui):
                     print('초대받음')
                     self.userinvite(1, msg[1][:-1])
 
-            elif msg[0] == 'L':  # 메인 채팅 페이지 갱신 식별
+            if msg[0] == 'L':  # 메인 채팅 페이지 갱신 식별
                 if msg[1][-1] == 'C':
                     print('제이슨!')
                     ulist = json.loads(msg[1][:-1])  # bytes형으로 수신된 데이터를 문자열로 변환 출력 json.loads
-                    print('ulist', ulist)
+                    print('ulist',ulist)
                     self.mainList_set(ulist)
-            elif msg[0] == 'JG':
-                if msg[1][-1] == 'R':
-                    self.gr_chat.addItem(f"==  {msg[1][:-1]} 님이 준비 완료  ==")
-                    self.scollcheck(1)
-                elif msg[1][-1] == 'T':
-                    self.gr_chat.addItem(f"==  {msg[1][:-1]} 님이 준비 취소  ==")
-                    self.scollcheck(1)
-                # elif msg[1][-1] == 'N':
-                #     self.j_bingoselect(1)
-                elif msg[1][-1] == 'S':
-                    self.j_bingoStart(2)
-                elif msg[1][-1] == 'J':  # 본인턴이 아닌 빙고 숫자 받기
-                    self.j_bingoselect(1, msg[1][:-1])
-                elif msg[1][-1] == 'Y':  # 본인턴.
-                    self.j_bingoselect(1, msg[1][:-1])
-                    self.gr_alert.show()
-            elif msg[0] == '!?start?!':
-                self.bingo()
-
 
             # except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.
             #     print(e)
@@ -481,7 +232,6 @@ class Cclient(QWidget, testui):
     def gameroomset(self, signal):  # 방 생성 허락 후 방 기본값 셋팅
         if signal == 1:
             self.CHAT_STACK.setCurrentIndex(2)  # 이동
-            self.j_bingoset(0)
             print(len(self.gru_list[0]))
             print(len(self.gru_list[1]))
             self.gr_roomname.setText(self.game_name.text())
@@ -510,9 +260,6 @@ class Cclient(QWidget, testui):
                 return
             self.sock.send(message.encode())
             self.gr_sendtext.clear()
-        elif signal == 1:
-            pass
-        # 빙고입력용
 
     def scollcheck(self, signal):
         time.sleep(0.005)
@@ -548,7 +295,6 @@ class Cclient(QWidget, testui):
                 self.gr_gamename.setText(roominfo[1][1])
                 self.gr_people.setText(roominfo[1][2])
                 self.CHAT_STACK.setCurrentIndex(2)  # 이동
-                self.j_bingoset(0)
         except AttributeError:
             a = QMessageBox.information(self, "알림", "방을 선택해주세요")
             return
@@ -570,13 +316,6 @@ class Cclient(QWidget, testui):
 
     def pageReset(self, signal):
         if signal == 1:  # 게임방에서 나갔을때. 초기화
-            self.gr_in.hide()
-            self.game_startset.show()
-            self.gr_checknum.clear()
-            self.gr_unchecknum.clear()
-            self.bingotable.clear()
-            self.gr_sendtext.clear()
-            self.gr_chat.clear()
             # self.Game_userlist2.clear()
             # self.Game_userlist.clear()
             # self.gr_chat.clear()
@@ -588,28 +327,6 @@ class Cclient(QWidget, testui):
             self.game_ppcb.setCurrentIndex(0)
             self.game_gamecb.setCurrentIndex(0)
             self.F_gamecreate.hide()
-
-    def j_bingoset(self, signal):
-        if signal == 0:
-            self.gr_checknum.clear()
-            HH = self.bingotable.horizontalHeader()
-            VH = self.bingotable.verticalHeader()
-            for i in range(0, 5):
-                HH.resizeSection(i, 79)
-                VH.resizeSection(i, 79)
-            for i in range(25):
-                self.gr_checknum.addItem(str(i + 1))
-        elif signal == 1:
-            self.JDnum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-            self.rannum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-            random.shuffle(self.rannum)
-            print(self.rannum)
-            count = 0
-            for row in range(5):
-                for col in range(5):
-                    self.bingotable.setItem(row, col, QTableWidgetItem(str(self.rannum[count])))
-                    count += 1
-
 
     # def test(self):
     #     self.usernum = 1
