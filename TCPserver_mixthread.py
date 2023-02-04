@@ -94,17 +94,17 @@ class UserManager:  # 유저 컨트롤용 클래스
                 cl_sock, addr = userInfo[user]
                 cl_sock.send((f'JG!*!:!*!%s%s' % (sender, msg)).encode())
         elif signal == 2:
+            count = 0
             for user in userList:
                 cl_sock, addr = userInfo[user]
-                cl_sock.send((f'JG!*!:!*!%sS' % (sender)).encode())
-                return
-        elif signal == 3: #여기서 sender는 순서를 체크해주기 위한 변수로 사용된다.
-            # n = '이'
-            # u = ['정', '강', '이']
-            # t = u.index(n)
-            # t = (t + 1) % len(u)
+                if count == 0:
+                    cl_sock.send((f'JG!*!:!*!%sS' % (sender)).encode())
+                else:
+                    cl_sock.send((f'JG!*!:!*!%ss' % (sender)).encode())
+                count += 1
+        elif signal == 3:  # 여기서 sender는 순서를 체크해주기 위한 변수로 사용된다.
             IDX = userList.index(sender)
-            TURN = (IDX+1) % len(userList)
+            TURN = (IDX + 1) % len(userList)
 
             for user in userList:
                 cl_sock, addr = userInfo[user]
@@ -112,10 +112,14 @@ class UserManager:  # 유저 컨트롤용 클래스
                     cl_sock.send((f'JG!*!:!*!%sY' % (msg)).encode())
                 else:
                     cl_sock.send((f'JG!*!:!*!%sJ' % (msg)).encode())
-
-            #누구 턴인지 그 사람한테는 추가로 보내줘야돼.
-
-
+        elif signal == 4:  # 승리
+            if msg == 0:  # msg에 중복 신호 순서 처리 가장 먼저 온것만 처리
+                for user in userList:
+                    cl_sock, addr = userInfo[user]
+                    if sender == user:  # 승리 신호 전달
+                        cl_sock.send((f'JG!*!:!*!%sW' % (msg)).encode())
+                    else:  # 패배 신호 전달
+                        cl_sock.send((f'JG!*!:!*!%sL' % (msg)).encode())
 
 
 class Bingoclass():
@@ -139,9 +143,6 @@ class Bingoclass():
                     msg = str(usercount)
                     cl_sock.send(msg.encode())
 
-                # elif user == cl_sock:
-                #     print("!")
-
     def bingostart(self, username, users, request):
         nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
         random.shuffle(nums)
@@ -156,27 +157,6 @@ class Bingoclass():
                         if user == cl_sock:
                             # print(user, cl_sock, "!!!!@!@!@")
                             cl_sock.send(str(j).encode())  # 각각의 사용자에게 메시지 전송
-    # def dongGameset(self, msg):
-    #     Cmsg = msg.decode().split('!*!:!*!')
-    #     sendlist = []
-    #     for i in range(5):
-    #         a = random.randint(50, int(Cmsg[2]) - 50)
-    #         b = random.randint(3, 9)
-    #         sendlist.append([a, b])
-    #     print('qhsosek', sendlist)
-    #     slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
-    #     self.users['qwe'][0].send(slist.encode())
-    #     self.users['asd'][0].send(slist.encode())
-    #     return slist
-    #
-    # def dongre(self):
-    #     a = random.randint(50, 600 - 50)
-    #     b = random.randint(3, 9)
-    #     sendlist = [a, b]
-    #     slist = 'Gc!*!:!*!dongset!*!:!*!' + json.dumps(sendlist)
-    #     self.users['qwe'][0].send(slist.encode())
-    #     self.users['asd'][0].send(slist.encode())
-    #
 
 
 class gameserver:
@@ -186,6 +166,7 @@ class gameserver:
         self.readyUser = {}  # 키:게임방이름 밸류:ready 누른 유저이름
         self.gamingUser = []  # 게임 입장 유저 리스트  (아 gameroom.values() 하면 되네)
         self.gamin_ing_room = {}
+
     def createRoom(self, user, roomInfo):  # 방 생성
         # roomInfo = [방이름, 게임종류, 최대인원]
         if roomInfo[0] in self.gameroom.keys():  # 이미 같은 이름의 방 존재시 리턴 F
@@ -207,7 +188,8 @@ class gameserver:
     def entranceRoom(self, user, roomname):  # 게임방 입장
 
         try:
-            if int(self.gameroomInfo[roomname][1][0]) > int(len(self.gameroom[roomname])) and roomname not in self.gamin_ing_room:
+            if int(self.gameroomInfo[roomname][1][0]) > int(
+                    len(self.gameroom[roomname])) and roomname not in self.gamin_ing_room:
                 self.gameroom[roomname].append(user)
                 print(self.gameroom)
             else:
@@ -253,21 +235,25 @@ class gameserver:
                 userlist[i][0].send(f'Gr!*!:!*!{senddata}%'.encode())
         print('게임방 유저 보낸다~')
         print(self.gameroom)
+
     def gamestart_checker(self, userList, roomName, userName):
-        #1.레디 누르사람 리스트 만들고 append 2. 그 방의 인원 체크해서 모든 사람이 레디 눌럿는지 확인.
-        #해당 방에 접속한 유저에게 게임 시작 신호 전송 이왕이면  턴 순서까지?
-        #게임스타트 신호 보낸 후에 게임 진행중인 방리스트에 추가해서 게임 진행중에 다른 유저 접속 차단
+        # 1.레디 누르사람 리스트 만들고 append 2. 그 방의 인원 체크해서 모든 사람이 레디 눌럿는지 확인.
+        # 해당 방에 접속한 유저에게 게임 시작 신호 전송 이왕이면  턴 순서까지?
+        # 게임스타트 신호 보낸 후에 게임 진행중인 방리스트에 추가해서 게임 진행중에 다른 유저 접속 차단
         self.readyUser[roomName].append(userName)
         print('tt', self.readyUser)
-        if len(self.gameroom[roomName]) == len(self.readyUser[roomName]) and len(self.gameroom[roomName]) > 1:   #방 참가자 모두 ready
-            self.gamin_ing_room[roomName] = -1
+        if len(self.gameroom[roomName]) == len(self.readyUser[roomName]) and len(
+                self.gameroom[roomName]) > 1:  # 방 참가자 모두 ready
+            self.gamin_ing_room[roomName] = 0
             return True
         else:
             return False
 
         # 게임방에 들어있는 사람 모두가 레디 신호 보내면 게임 스타트 신호 전달
+
     def deleteready(self, roomName, userName):
         self.readyUser[roomName].remove(userName)
+
 
 class TCPhandler(socketserver.BaseRequestHandler):
     userManager = UserManager()  # 유저 클래스 선언
@@ -326,15 +312,6 @@ class TCPhandler(socketserver.BaseRequestHandler):
                     ulist = 'L!*!:!*!' + json.dumps([userInfoList, gameRoomData]) + 'C'
                     self.request.send(ulist.encode())
 
-                # elif Cmsg[0] == 'G':
-                #     self.userManager.gamesignal(Cmsg[2], msg)
-                # elif Cmsg[0] == 'Gc':  #똥겜
-                #     if Cmsg[1] == 'dongset' and Cmsg[3] == '1':
-                #         slist = self.userManager.dongGameset(msg)
-                #         # self.request.send(slist.encode())
-                #     elif Cmsg[1] == 'redong' and Cmsg[2][1] == '1':
-                #         self.userManager.dongre()
-
                 elif Cmsg[0] == 'Gr':  # gameroom 관련
                     if Cmsg[2][-1] == 'C':
                         Tmsg = Cmsg[1].split('%@%')
@@ -369,7 +346,7 @@ class TCPhandler(socketserver.BaseRequestHandler):
                                                        self.userManager.users, 1)
                         if self.gameServer.gamestart_checker(self.userManager.users, Tmsg[0], Tmsg[1]):
                             self.userManager.gamechatToAll(0, 0, self.gameServer.gameroom[Tmsg[0]],
-                                                       self.userManager.users, 2)
+                                                           self.userManager.users, 2)
                     elif Cmsg[2][-1] == 'T':
                         self.userManager.gamechatToAll(Cmsg[2], Tmsg[1], self.gameServer.gameroom[Tmsg[0]],
                                                        self.userManager.users, 1)
@@ -377,7 +354,12 @@ class TCPhandler(socketserver.BaseRequestHandler):
                     elif Cmsg[2][-1] == 'J':
                         self.userManager.gamechatToAll(Cmsg[2][:-1], Tmsg[1], self.gameServer.gameroom[Tmsg[0]],
                                                        self.userManager.users, 3)
-                        #msg, sender, userList, userInfo, signal
+                        # msg, sender, userList, userInfo, signal
+                    elif Cmsg[2][-1] == 'W':  # 승리 시그널
+                        self.userManager.gamechatToAll(self.gameServer.gamin_ing_room[Tmsg[0]], Tmsg[1],
+                                                       self.gameServer.gameroom[Tmsg[0]],
+                                                       self.userManager.users, 4)
+                        self.gameServer.gamin_ing_room[Tmsg[0]] += 1
                 elif Cmsg[0] == 'B':
                     # print(Cmsg[1])
                     self.userManager.outname.append(Cmsg[1])
@@ -451,7 +433,7 @@ class ChatingServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 
 if __name__ == "__main__":
-    address = ("10.10.21.106", 9009)
+    address = ("192.168.0.76", 9009)
 
     print('▷ 채팅 서버를 시작합니다.')
     print('▷ 채팅 서버를 끝내려면 Ctrl-C를 누르세요.')

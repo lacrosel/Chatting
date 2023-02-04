@@ -33,6 +33,7 @@ class Cclient(QWidget, testui):
         self.F_gameinvite.hide()
         self.gr_alert.hide()
         self.gr_in.hide()
+        self.game_startset.show()
         self.F_alert.hide()
         self.F_alert2.hide()
         self.j_gameready = False
@@ -48,13 +49,11 @@ class Cclient(QWidget, testui):
         self.CHAT_BT_close_2.clicked.connect(self.back)
         self.CHAT_BT_send.clicked.connect(lambda: self.bingoins(1))
 
-
-
         self.game_startset.clicked.connect(lambda: self.j_bingoStart(0))
         self.game_rand.clicked.connect(lambda: self.j_bingoset(1))
         self.game_startbt.clicked.connect(lambda: self.j_bingoStart(1))
-        self.gr_selectnum.returnPressed.connect(lambda: self.j_bingoselect(2,False))
-############
+        self.gr_selectnum.returnPressed.connect(lambda: self.j_bingoselect(2, False))
+        ############
         ##################
         self.listWidget.doubleClicked.connect(lambda: self.chatLog(0, 0))
         self.gr_roomclose.clicked.connect(lambda: self.pageReset(1))
@@ -79,32 +78,53 @@ class Cclient(QWidget, testui):
 
         # self.CHAT_game.clicked.connect(self.test)
 
-
-    def j_bingoselect(self, signal, numS):
-        if signal == 0:  #필요 없어짐. 2번으로 대체됨.
+    def j_bingoselect(self, signal, numS):   # 빙고 게임 진행 관련 메서드
+        if signal == 0:  # 필요 없어짐. 2번으로 대체됨.
             # selectnum = self.gr_checknum.currentItem().text()
             print('2')
             # self.gr_checknum.takeItem(self.gr_checknum.currentRow())
             # message = 'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + selectnum +'N'
             # self.sock.send(message.encode())
-            #메시지로 보낼거
-        elif signal == 1:
+            # 메시지로 보낼거
+        elif signal == 1:  # 서버로 받은 숫자 체크 후 빙고 유무 확인
             try:
                 idx = self.rannum.index(int(numS))
             except ValueError:
-                print('에러다 에러 숫자 없다.')
+                print('에러다 에러 숫자 없다.')  # 맨 처음 시작할때 숫자에러용
                 return
             idx_row = idx // 5
             idx_col = idx % 5
             print(idx_row, ' == ', idx_col)
+            self.pickedNum.append(int(numS))
             self.bingotable.item(idx_row, idx_col).setBackground(QtGui.QColor(100, 100, 150))
+            count = 0
+            bingo = 0
+            running = True
+            for arr in self.totalChecker:
+                if not running:
+                    break
+                count += 1
+                print(count)
+                checker = 0
+                for ck in arr:
+                    if ck not in self.pickedNum:
+                        checker += 1
+                if checker == 0:
+                    bingo += 1
+                    print('빙고!!!')
+                    if bingo >= 3:  # 승리 신호 전달
+                        print('gameset!')
+                        msg = 'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + 'W'
+                        self.sock.send(msg.encode())
+                        running = False
+                        break
             self.JDnum.remove(int(numS))
             self.gr_unchecknum.addItem(str(numS))
             self.gr_checknum.clear()
             for nb in self.JDnum:
                 self.gr_checknum.addItem(str(nb))
 
-        elif signal == 2:
+        elif signal == 2:  # 본인턴 숫자 전송 기능
             num = self.gr_selectnum.text()
             self.gr_selectnum.clear()
             try:
@@ -114,7 +134,7 @@ class Cclient(QWidget, testui):
                     self.alert_text2.setText('숫자를 확인해주세요')
                     return
                 print('보낸다 숫자!', num)
-                msg =  'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + num+'J'
+                msg = 'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + num + 'J'
                 self.sock.send(msg.encode())
                 self.gr_alert.hide()
             except ValueError:
@@ -122,16 +142,15 @@ class Cclient(QWidget, testui):
                 self.alert_text2.setText('숫자를 입력해주세요')
                 return
 
-    def j_bingoStart(self, signal):
-        if signal == 0:
+    def j_bingoStart(self, signal):   # 게임 시작 관련 메서드
+        if signal == 0:     # 게임판 데이터 채우기 위한 작업.
             if self.j_gameready == False:
                 self.j_bingoset(0)
                 self.gr_in.show()
-                # self.game_startbt.setBackground(QtGui.QColor(222, 222, 222))
                 self.game_startset.hide()
 
-        elif signal == 1:
-            if self.j_gameready == False:       # 준비 신호 전송
+        elif signal == 1: # 빙고판 데이터 체크 후 ready 상태 신호 전송 기능
+            if self.j_gameready == False:  # 준비 신호 전송
                 rowcount = self.bingotable.rowCount()
                 colcount = self.bingotable.columnCount()
                 for i in range(0, rowcount):
@@ -146,20 +165,19 @@ class Cclient(QWidget, testui):
                 self.j_gameready = True
                 self.game_rand.setEnabled(False)
                 self.gr_numinput.setEnabled(False)
-                #'Gr' + '!*!:!*!'
+                # 'Gr' + '!*!:!*!'
                 message = 'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + 'R'
                 self.sock.send(message.encode())
-            elif self.j_gameready == True:  #준비 해제 신호 전송
+            elif self.j_gameready == True:  # 준비 해제 신호 전송
                 self.j_gameready = False
                 self.game_rand.setEnabled(True)
                 self.gr_numinput.setEnabled(True)
                 # self.game_startbt.setBackground(QtGui.QColor(100, 180, 222))
                 message = 'JG' + '!*!:!*!' + self.gr_roomname.text() + '%@%' + self.name + '!*!:!*!' + 'T'
                 self.sock.send(message.encode())
-        elif signal == 2:  # 게임 시작신호.
+        elif signal == 2:  # 게임 시작신호 전송
             self.gr_in.hide()
             self.gr_alert.show()
-
 
     def back(self):
         message = 'O' + '!*!:!*!' + self.name
@@ -307,7 +325,7 @@ class Cclient(QWidget, testui):
             self.listWidget.insertItem(0, f'@@  {data[1]}  메세지 @@')  # 맨 앞에 추가하기.
 
     def userinvite(self, signal, data):
-        if signal == 0:
+        if signal == 0:  # 초대 메시지 전송 요청
             try:
                 toUser = self.Game_userlist2.item(self.Game_userlist2.currentRow(), 0).text()
                 print(toUser, ' 초대')
@@ -315,30 +333,29 @@ class Cclient(QWidget, testui):
                 self.sock.send(msg.encode())
             except AttributeError:
                 return
-        elif signal == 1:
+        elif signal == 1:  # 초대 메시지 수신 시
             # sender+'!@#'+recver+'!@#' + msg
             info = data.split('!@#')
-            print(info)
             # 방이름 , 게임종류
             self.info2 = info[2].split('^%^')
             print(self.info2)
             self.F_gameinvite.show()
             self.invite_text.setPlainText(f"{info[0]}님이\n{self.info2[0]}-{self.info2[1]}\n초대했습니다.")
-
-        elif signal == 2:  # 수락
+            #                                상대방이름      방이름             게임종류
+        elif signal == 2:  # 초대 수락
             self.F_gameinvite.hide()
-            self.sock.send(f'Gr!*!:!*!{self.name}!*!:!*!{self.info2[0]}$'.encode())
+            self.sock.send(f'Gr!*!:!*!{self.name}!*!:!*!{self.info2[0]}$'.encode())  # 서버에게 해당 방 입장 요청
 
-        elif signal == 3:  # 거절
+        elif signal == 3:  # 초대 거절
+            self.F_gameinvite.hide()
             # self.invite_text.clear()
-            self.F_gameinvite.hide()
 
     def admission(self):  # 서버 접속
         self.running = True
         self.name = self.nameedit.text()
         self.nameedit.clear()
 
-        address = ("10.10.21.106", 9009)
+        address = ("192.168.0.76", 9009)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((address))
         th = threading.Thread(target=self.recvMsg, args=(self.sock,))
@@ -364,112 +381,6 @@ class Cclient(QWidget, testui):
                 self.CHAT_gamerlist.setItem(row, 1, QTableWidgetItem(str(ulist[1][row][1])))
                 self.CHAT_gamerlist.setItem(row, 2,
                                             QTableWidgetItem(str(ulist[1][row][3]) + ' / ' + str(ulist[1][row][2])))
-
-    def sendMsg(self):  # 채팅 msg 보내기
-        message = 'C' + '!*!:!*!' + self.CHAT_LE_tsend.text() + 'C'
-        if self.CHAT_LE_tsend.text() == "" or self.CHAT_LE_tsend.text() is None:
-            return
-        self.sock.send(message.encode())
-        self.CHAT_LE_tsend.clear()
-
-    def recvMsg(self, sock):  # 신호 받기 메서드 원래는 채팅뿐이었지만 다른 기능들 모두
-        while True:
-            data = sock.recv(1024)  # 서버로부터 문자열 수신
-            if not data:  # 문자열 없으면 종료
-                break
-            print(data.decode())
-            msg = data.decode().split('!*!:!*!')
-            print(msg)
-            if msg[0] == 'X':
-                if msg[1] == 'X':
-                    self.alert_text.setText('이미 존재하는 닉네임입니다.')
-                    self.F_alert.show()
-                    self.running = False
-                    break
-                elif msg[1] == 'O':
-                    self.CHAT_STACK.setCurrentIndex(1)
-            elif msg[0] == 'C':  # 일반 채팅 식별문자
-                if msg[1][-1] == 'C':
-                    self.listWidget.addItem(msg[1][:-1])
-                    self.scollcheck(0)
-                elif msg[1][-1] == 'L':
-                    chatlogdata = json.loads(msg[1][:-1])
-                    self.chatLog(1, chatlogdata)
-            # if msg[0] == 'G':
-            #     print(msg)
-            #     if msg[1] == 'right':
-            #         self.p2_dx = 10
-            #     elif msg[1] == 'left':
-            #         self.p2_dx = -10
-            #     elif msg[1] == 'zero':
-            #         self.p2_dx = 0
-            # if msg[0] == 'Gc':
-            #     print("동데이터!")
-            #     if msg[1] == 'dongset':
-            #         self.poss = json.loads(msg[2])
-            #         print(self.poss)
-            #         self.pygaming_test()
-            #     elif msg[1] == 'redong':
-            #         print('동이다')
-            #         self.rposs = json.loads(msg[2])
-            elif msg[0] == 'Gr':  # 게임방 식별 문자
-                if msg[1][-1] == '!':  # 게임방 생성 불가
-                    self.alert_text.setText('이미 존재하는 방입니다.')
-                    self.F_alert.show()
-                elif msg[1][-1] == '@':  # 게임방 생성 승인
-                    self.gru_list = json.loads(msg[1][:-1])
-                    self.gameroomset(1)
-                elif msg[1][-1] == '^':  # 게임방 입장 승인
-                    self.gru_list = json.loads(msg[1][:-1])
-                    self.gameRoom_Enter(1, self.gru_list)
-                    self.inviteList_renewal(1)
-                elif msg[1][-1] == '*':  # 게임방 입장 거절
-                    self.alert_text.setText('해당 방의 정원이 초과했습니다.')
-                    self.F_alert.show()
-
-                elif msg[1][-1] == '%':  # 게임방 내 데이터 갱신
-                    self.gru_list = json.loads(msg[1][:-1])
-                    self.inviteList_renewal(1)
-                elif msg[1][-1] == 'C':  # 일반 게임챗
-                    self.gr_chat.addItem(msg[1][:-1])
-                    self.scollcheck(1)
-                elif msg[1][-1] == 'I':  # 게임 초대
-                    # 'Gr!*!:!*!'+sender+'!@#'+recver+'!@#' + msg
-                    print('초대받음')
-                    self.userinvite(1, msg[1][:-1])
-
-            elif msg[0] == 'L':  # 메인 채팅 페이지 갱신 식별
-                if msg[1][-1] == 'C':
-                    print('제이슨!')
-                    ulist = json.loads(msg[1][:-1])  # bytes형으로 수신된 데이터를 문자열로 변환 출력 json.loads
-                    print('ulist', ulist)
-                    self.mainList_set(ulist)
-            elif msg[0] == 'JG':
-                if msg[1][-1] == 'R':
-                    self.gr_chat.addItem(f"==  {msg[1][:-1]} 님이 준비 완료  ==")
-                    self.scollcheck(1)
-                elif msg[1][-1] == 'T':
-                    self.gr_chat.addItem(f"==  {msg[1][:-1]} 님이 준비 취소  ==")
-                    self.scollcheck(1)
-                # elif msg[1][-1] == 'N':
-                #     self.j_bingoselect(1)
-                elif msg[1][-1] == 'S':
-                    self.j_bingoStart(2)
-                elif msg[1][-1] == 'J':  # 본인턴이 아닌 빙고 숫자 받기
-                    self.j_bingoselect(1, msg[1][:-1])
-                elif msg[1][-1] == 'Y':  # 본인턴.
-                    self.j_bingoselect(1, msg[1][:-1])
-                    self.gr_alert.show()
-            elif msg[0] == '!?start?!':
-                self.bingo()
-
-
-            # except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.
-            #     print(e)
-            if not self.running:
-                break
-        self.sock.close()
-        print("중지")
 
     def mainPage_renewal(self):  # 메인페이지 갱신 요청
         msg = 'L!*!:!*!' + 'C'
@@ -589,8 +500,8 @@ class Cclient(QWidget, testui):
             self.game_gamecb.setCurrentIndex(0)
             self.F_gamecreate.hide()
 
-    def j_bingoset(self, signal):
-        if signal == 0:
+    def j_bingoset(self, signal):  # 빙고 세팅 관련 메서드
+        if signal == 0:  # 빙고판 세팅
             self.gr_checknum.clear()
             HH = self.bingotable.horizontalHeader()
             VH = self.bingotable.verticalHeader()
@@ -599,10 +510,18 @@ class Cclient(QWidget, testui):
                 VH.resizeSection(i, 79)
             for i in range(25):
                 self.gr_checknum.addItem(str(i + 1))
-        elif signal == 1:
+        elif signal == 1:  # 빙고판에 넣을 숫자 random으로 넣어주기 위함.
             self.JDnum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
             self.rannum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
             random.shuffle(self.rannum)
+            self.arrNum = []
+            count = 0
+            for i in range(5):  # 테이블 위젯의 위치와 동일하게 하기 위해서 5x5배열로 만들기 위함.
+                aa = []
+                for j in range(5):
+                    aa.append(self.rannum[count])
+                    count += 1
+                self.arrNum.append(aa)
             print(self.rannum)
             count = 0
             for row in range(5):
@@ -610,6 +529,148 @@ class Cclient(QWidget, testui):
                     self.bingotable.setItem(row, col, QTableWidgetItem(str(self.rannum[count])))
                     count += 1
 
+    def bingoChecker(self):  # 빙고 체커 5x5빙고에서 빙고가 성립되는 경우 12가지 만드는 메서드
+        self.pickedNum = []
+        self.totalChecker = []
+        for row in range(5):
+            RBG = []
+            for col in range(5):
+                RBG.append(self.arrNum[row][col])
+            self.totalChecker.append(RBG)
+        for row in range(5):
+            CBG = []
+            for col in range(5):
+                CBG.append(self.arrNum[col][row])
+            self.totalChecker.append(CBG)
+        aa = []
+        bb = []
+        for row in range(5):
+            j = 4 - row
+            aa.append(self.arrNum[row][j])
+            bb.append(self.arrNum[row][row])
+        self.totalChecker.append(aa)
+        self.totalChecker.append(bb)
+        print('checker', self.totalChecker)
+
+    def sendMsg(self):  # 채팅 msg 보내기
+        message = 'C' + '!*!:!*!' + self.CHAT_LE_tsend.text() + 'C'
+        if self.CHAT_LE_tsend.text() == "" or self.CHAT_LE_tsend.text() is None:
+            return
+        self.sock.send(message.encode())
+        self.CHAT_LE_tsend.clear()
+
+    def recvMsg(self, sock):  # 신호 받기 메서드 원래는 채팅뿐이었지만 다른 기능들 모두
+        while True:
+            data = sock.recv(1024)  # 서버로부터 문자열 수신
+            if not data:  # 문자열 없으면 종료
+                break
+            print(data.decode())
+            msg = data.decode().split('!*!:!*!')
+            print(msg)
+            if msg[0] == 'X':
+                if msg[1] == 'X':
+                    self.alert_text.setText('이미 존재하는 닉네임입니다.')
+                    self.F_alert.show()
+                    self.running = False
+                    break
+                elif msg[1] == 'O':
+                    self.CHAT_STACK.setCurrentIndex(1)
+            elif msg[0] == 'C':  # 일반 채팅 식별문자
+                if msg[1][-1] == 'C':
+                    self.listWidget.addItem(msg[1][:-1])
+                    self.scollcheck(0)
+                elif msg[1][-1] == 'L':
+                    chatlogdata = json.loads(msg[1][:-1])
+                    self.chatLog(1, chatlogdata)
+            # if msg[0] == 'G':
+            #     print(msg)
+            #     if msg[1] == 'right':
+            #         self.p2_dx = 10
+            #     elif msg[1] == 'left':
+            #         self.p2_dx = -10
+            #     elif msg[1] == 'zero':
+            #         self.p2_dx = 0
+            # if msg[0] == 'Gc':
+            #     print("동데이터!")
+            #     if msg[1] == 'dongset':
+            #         self.poss = json.loads(msg[2])
+            #         print(self.poss)
+            #         self.pygaming_test()
+            #     elif msg[1] == 'redong':
+            #         print('동이다')
+            #         self.rposs = json.loads(msg[2])
+            elif msg[0] == 'Gr':  # 게임방 식별 문자
+                if msg[1][-1] == '!':  # 게임방 생성 불가
+                    self.alert_text.setText('이미 존재하는 방입니다.')
+                    self.F_alert.show()
+                elif msg[1][-1] == '@':  # 게임방 생성 승인
+                    self.gru_list = json.loads(msg[1][:-1])
+                    self.gameroomset(1)
+                elif msg[1][-1] == '^':  # 게임방 입장 승인
+                    self.gru_list = json.loads(msg[1][:-1])
+                    self.gameRoom_Enter(1, self.gru_list)
+                    self.inviteList_renewal(1)
+                elif msg[1][-1] == '*':  # 게임방 입장 거절
+                    self.alert_text.setText('해당 방의 정원이 초과했습니다.')
+                    self.F_alert.show()
+
+                elif msg[1][-1] == '%':  # 게임방 내 데이터 갱신
+                    self.gru_list = json.loads(msg[1][:-1])
+                    self.inviteList_renewal(1)
+                elif msg[1][-1] == 'C':  # 일반 게임챗
+                    self.gr_chat.addItem(msg[1][:-1])
+                    self.scollcheck(1)
+                elif msg[1][-1] == 'I':  # 게임 초대
+                    # 'Gr!*!:!*!'+sender+'!@#'+recver+'!@#' + msg
+                    print('초대받음')
+                    self.userinvite(1, msg[1][:-1])
+
+            elif msg[0] == 'L':  # 메인 채팅 페이지 갱신 식별
+                if msg[1][-1] == 'C':
+                    print('제이슨!')
+                    ulist = json.loads(msg[1][:-1])  # bytes형으로 수신된 데이터를 문자열로 변환 출력 json.loads
+                    print('ulist', ulist)
+                    self.mainList_set(ulist)
+            elif msg[0] == 'JG':
+                if msg[1][-1] == 'R':
+                    self.gr_chat.addItem(f"==  {msg[1][:-1]} 님이 준비 완료  ==")
+                    self.scollcheck(1)
+                elif msg[1][-1] == 'T':
+                    self.gr_chat.addItem(f"==  {msg[1][:-1]} 님이 준비 취소  ==")
+                    self.scollcheck(1)
+                elif msg[1][-1] == 'S':
+                    self.j_bingoStart(2)
+                    self.bingoChecker()
+                elif msg[1][-1] == 's':
+                    self.gr_in.hide()
+                    self.bingoChecker()
+                elif msg[1][-1] == 'J':  # 본인턴이 아닌 빙고 숫자 받기
+                    self.j_bingoselect(1, msg[1][:-1])
+                elif msg[1][-1] == 'Y':  # 본인턴.
+                    self.j_bingoselect(1, msg[1][:-1])
+                    self.gr_alert.show()
+                elif msg[1][-1] == 'W':  # 승리
+                    self.GameResult(0)
+                elif msg[1][-1] == 'L':  # 패배
+                    self.GameResult(1)
+            elif msg[0] == '!?start?!':
+                self.bingo()
+
+            # except Exception as e:  # 어떤 에러 일지 모르니까 표시만 하고 서버 멈추지는 않도록 처리.
+            #     print(e)
+            if not self.running:
+                break
+        self.sock.close()
+        print("중지")
+
+    def GameResult(self, signal):
+        if signal == 0:
+            self.F_alert2.show()
+            self.alert_text2.setText('당신은 승리하셨습니다.')
+
+        else:
+            self.F_alert2.show()
+            self.alert_text2.setText('당신은 패배하셨습니다.')
 
     # def test(self):
     #     self.usernum = 1

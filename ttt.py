@@ -1,3 +1,5 @@
+
+
 from datetime import datetime
 
 import pymysql
@@ -69,13 +71,74 @@ import random
 # if '빙고' not in rinfo:
 #     print("222")
 
-
+#
 JDnum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-indx = [[1, 2, 3, 4, 5],
-        [6, 7, 8, 9, 10],
-        [11, 12, 13, 14, 15],
-        [16, 17, 18, 19, 20],
-        [21, 22, 23, 24, 25]]
-pick = [1, 2, 3, 4, 5]
 
+arr = []
+count=0
+for i in range(5):
+    aa= []
+    for j in range(5):
+        aa.append(JDnum[count])
+        count += 1
+    arr.append(aa)
+
+print(arr)
+
+
+
+
+
+# indx = [[1, 2, 3, 4, 5],
+#      [6, 7, 8, 9, 10],
+#      [11, 12, 13, 14, 15],
+#      [16, 17, 18, 19, 20],
+#      [21, 22, 23, 24, 25]]
+# pick = [1, 2, 3, 4, 5, 14,18,7,9,22,25,11,17,6,16,21]
+#
+# checker = 0
+# for i in pick:
+#     if i not in JDnum:
+#         checker +=1
+#
+# if checker != 0:
+#     print("불일치")
+# if pick in JDnum:
+#     print('11')
+#
+#
+#
+# total = []
+#
+# for row in range(5):
+#     da = []
+#     for col in range(5):
+#         da.append(indx[row][col])
+#     total.append(da)
+# for row in range(5):
+#     da = []
+#     for col in range(5):
+#         da.append(indx[col][row])
+#     total.append(da)
+# aa=[]
+# bb=[]
+# for row in range(5):
+#     j = 4-row
+#     aa.append(indx[row][j])
+#     bb.append(indx[row][row])
+# total.append(aa)
+# total.append(bb)
+# # print(total)
+# count = 0
+# bingo = 0
+# for arr in total:
+#     count += 1
+#     print(count)
+#     checker = 0
+#     for ck in arr:
+#         if ck not in pick:
+#             checker += 1
+#     if checker == 0:
+#         bingo += 1
+#         print('빙고')
 
