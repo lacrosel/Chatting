@@ -303,7 +303,7 @@ class Cclient(QWidget, testui):
                 print("????")
 
     ###################
-    def chatLog(self, signal, data):
+    def chatLog(self, signal, data): # 이전 채팅 요청 메서드
         if signal == 0:
             if self.listWidget.currentRow() == 0:
                 self.logSignal += 1
@@ -355,7 +355,7 @@ class Cclient(QWidget, testui):
         self.name = self.nameedit.text()
         self.nameedit.clear()
 
-        address = ("192.168.0.76", 9009)
+        address = ("10.10.21.106", 9009)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((address))
         th = threading.Thread(target=self.recvMsg, args=(self.sock,))

@@ -428,18 +428,18 @@ class TCPhandler(socketserver.BaseRequestHandler):
 # socketserver.ThreadingMixIn: 독립된 스레드로 처리하도록 접속시 마다 새로운 스레드 생성
 # 직접적으로 스레드 동작하게 지정해주는거랑 같다. 대신 이미 누가 메서드로 만들어 놓은거 사용하는 것.
 # ThreadingMixIn(소켓서버 스레드 동작), TCPServer class(스레드 동작시킬 위에서 정의한 TCPserver) 상속
-class ChatingServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+class TCPMainServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass  # 이건 단순하게 스레드 동작 하게 한다는 거니까 특별히 뭘 적어줄 필요 x
 
 
 if __name__ == "__main__":
-    address = ("192.168.0.76", 9009)
+    address = ("10.10.21.106", 9009)
 
     print('▷ 채팅 서버를 시작합니다.')
     print('▷ 채팅 서버를 끝내려면 Ctrl-C를 누르세요.')
 
     try:
-        server = ChatingServer(address, TCPhandler)
+        server = TCPMainServer(address, TCPhandler)
         server.serve_forever()  # 무한 실행
     except KeyboardInterrupt:  # Ctrl + C 입력시 종료
         print('▷ 채팅 서버를 종료합니다.')
